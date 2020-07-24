@@ -79,7 +79,7 @@ if __name__ == '__main__':
     embeds, embedding_size = load_embeddings("glove.840B.300d.txt", input_lang)
     embeds = torch.FloatTensor(embeds)
     hidden_size = 100
-    learning_rate = 0.000001
+    learning_rate = 0.00005
     criterion = nn.NLLLoss()
 
     encoder    = EncoderRNN(input_lang.n_words, embedding_size, 
