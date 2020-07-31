@@ -88,11 +88,11 @@ def load_data(file_name, input_lang=None, dep_lang=None, ner_lang=None):
         # type_subj   = datapoint['subj_type']
         # type_obj    = datapoint['obj_type']
         ner         = ['O'] + datapoint['stanford_ner']
-        for i in ner:
+        for i in range(len(ner)):
             if i in entity_subj:
-                i += '-SUBJ'
+                ner[i] += '-SUBJ'
             elif i in entity_obj:
-                i += '-OBJ'
+                ner[i] += '-OBJ'
         print (ner)
 
 
