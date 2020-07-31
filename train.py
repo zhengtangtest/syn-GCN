@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
     input_lang, dep_lang, ner_lang, training_data = load_data('tacred/data/json/train.json')
 
-    dev_data = load_data('tacred/data/json/dev.json', input_lang, dep_lang)
+    dev_data = load_data('tacred/data/json/dev.json', input_lang, dep_lang, ner_lang)
 
     embeds, embedding_size = load_embeddings("glove.840B.300d.txt", input_lang)
     embeds = torch.FloatTensor(embeds)
@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
         eval(dev_data, encoder, classifier)
 
-        os.mkdir("model/%d"%epoch)
-        PATH = "model/%d"%epoch
+        os.mkdir("model_ner/%d"%epoch)
+        PATH = "model_ner/%d"%epoch
         torch.save(encoder, PATH+"/encoder")
         torch.save(classifier, PATH+"/classifier")
