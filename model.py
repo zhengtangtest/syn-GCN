@@ -28,7 +28,7 @@ class EncoderRNN(nn.Module):
         self.rnn = nn.LSTM(embedding_size + hidden_size, hidden_size, bidirectional=True)
 
         self.linear  = nn.Linear(hidden_size * 2,   hidden_size)
-        self.linear2 = nn.Linear(hidden_size + 610, hidden_size)
+        self.linear2 = nn.Linear(hidden_size + (embedding_size+hidden_size)*2, hidden_size)
 
         self.attn = nn.Linear(hidden_size, 1)
 
