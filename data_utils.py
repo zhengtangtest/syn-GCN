@@ -93,7 +93,6 @@ def load_data(file_name, input_lang=None, dep_lang=None, ner_lang=None):
                 ner[i] += '-SUBJ'
             elif i in entity_obj:
                 ner[i] += '-OBJ'
-        print (ner)
 
 
 
