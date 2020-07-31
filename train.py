@@ -15,11 +15,10 @@ def train(training_data, encoder, classifier, encoder_optimizer, classifier_opti
         label_index = tensorFromIndexes(datapoint[3])
         entity_subj = datapoint[4]
         entity_obj  = datapoint[5]
-        type_subj   = datapoint[6]
-        type_obj    = datapoint[7]
+        ner         = tensorFromIndexes(datapoint[6])
 
         outputs, subj, obj, sw, ow, syn_embedded = encoder(sentence, label_index,
-            entity_subj, entity_obj, edge_index)
+            entity_subj, entity_obj, edge_index, ner)
 
         predict = classifier(outputs, syn_embedded, subj, obj, edge_index)
 
@@ -52,13 +51,12 @@ def eval(dev_data, encoder, classifier):
             label_index = tensorFromIndexes(datapoint[3])
             entity_subj = datapoint[4]
             entity_obj  = datapoint[5]
-            type_subj   = datapoint[6]
-            type_obj    = datapoint[7]
+            ner         = tensorFromIndexes(datapoint[6])
 
             key.append(relation)
 
             outputs, subj, obj, sw, ow, syn_embedded = encoder(sentence, label_index,
-                entity_subj, entity_obj, edge_index)
+                entity_subj, entity_obj, edge_index, ner)
 
             predict = classifier(outputs, syn_embedded, subj, obj, edge_index)
 
@@ -72,7 +70,7 @@ def eval(dev_data, encoder, classifier):
 
 if __name__ == '__main__':
 
-    input_lang, dep_lang, training_data = load_data('tacred/data/json/train.json')
+    input_lang, dep_lang, ner_lang, training_data = load_data('tacred/data/json/train.json')
 
     dev_data = load_data('tacred/data/json/dev.json', input_lang, dep_lang)
 
@@ -83,7 +81,7 @@ if __name__ == '__main__':
     criterion = nn.NLLLoss()
 
     encoder    = EncoderRNN(input_lang.n_words, embedding_size, 
-        dep_lang.n_words, hidden_size, embeds).to(device)
+        dep_lang.n_words, ner_lang.n_words, hidden_size, embeds).to(device)
     classifier = Classifier(hidden_size, hidden_size, len(id2relation)).to(device)
 
     encoder_optimizer    = optim.Adam(encoder.parameters(), lr=learning_rate)

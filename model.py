@@ -15,11 +15,14 @@ torch.backends.cudnn.deterministic = True
 device = torch.device('cpu')#"cuda" if torch.cuda.is_available() else "cpu")
 
 class EncoderRNN(nn.Module):
-    def __init__(self, input_size, embedding_size, syn_size, hidden_size, pretrained):
+    def __init__(self, input_size, embedding_size, syn_size, ner_size, hidden_size, pretrained):
         super(EncoderRNN, self).__init__()
 
+        self.hidden_size = hidden_size
+
         self.embedding = nn.Embedding.from_pretrained(pretrained, freeze=False)
-        self.lemma_embedding = nn.Embedding(2, 5)
+        # self.lemma_embedding = nn.Embedding(2, 5)
+        self.ner_embedding = nn.Embedding(ner_size, hidden_size)
         self.syn_embedding = nn.Embedding(syn_size, hidden_size)
         
         self.rnn = nn.LSTM(embedding_size + 5, hidden_size, bidirectional=True)
@@ -29,13 +32,15 @@ class EncoderRNN(nn.Module):
 
         self.attn = nn.Linear(hidden_size, 1)
 
-    def forward(self, input, syn_labels, subj_pos, obj_pos, edge_index):
-        lemma = [1 if i in subj_pos or i in obj_pos else 0 for i in range(input.size(0))]
-        lemma = torch.tensor(lemma, dtype=torch.long, device=device).view(-1, 1)
-        lemma_embeded = self.lemma_embedding(lemma).view(-1, 1, 5)
+    def forward(self, input, syn_labels, subj_pos, obj_pos, edge_index, ner):
+        # lemma = [1 if i in subj_pos or i in obj_pos else 0 for i in range(input.size(0))]
+        # lemma = torch.tensor(lemma, dtype=torch.long, device=device).view(-1, 1)
+        # lemma_embeded = self.lemma_embedding(lemma).view(-1, 1, 5)
+
+        ner_embeded = self.ner_embedding(ner).view(-1, 1, self.hidden_size)
         
         embedded = self.embedding(input).view(-1, 1, 300)
-        embedded = torch.cat((embedded, lemma_embeded), dim=2)
+        embedded = torch.cat((embedded, ner_embeded), dim=2)
         
         syn_embedded         = self.syn_embedding(syn_labels).view(syn_labels.size(0), -1)
         first_word_embedded  = embedded[edge_index[0],:,:].view(syn_labels.size(0), -1)

@@ -59,7 +59,7 @@ def makeIndexes(lang, seq):
 def tensorFromIndexes(indexes):
     return torch.tensor(indexes, dtype=torch.long, device=device).view(-1, 1)
 
-def load_data(file_name, input_lang=None, dep_lang=None):
+def load_data(file_name, input_lang=None, dep_lang=None, ner_lang=None):
 
     is_train = False
 
@@ -68,6 +68,7 @@ def load_data(file_name, input_lang=None, dep_lang=None):
     if input_lang is None:
         input_lang  = Lang("input")
         dep_lang    = Lang("dep")
+        ner_lang    = Lang('ner')
         is_train    = True
 
     data = list()
@@ -84,19 +85,30 @@ def load_data(file_name, input_lang=None, dep_lang=None):
 
         entity_subj = list(range(datapoint['subj_start']+1, datapoint['subj_end']+2))
         entity_obj  = list(range(datapoint['obj_start']+1, datapoint['obj_end']+2))
-        type_subj   = datapoint['subj_type']
-        type_obj    = datapoint['obj_type']
+        # type_subj   = datapoint['subj_type']
+        # type_obj    = datapoint['obj_type']
+        ner         = datapoint['stanford_ner']
+        for i in ner:
+            if i in entity_subj:
+                i += '-SUBJ'
+            elif i in entity_obj:
+                i += '-OBJ'
+
+
 
         if is_train:
             input_lang.addSentence(sentence)
             dep_lang.addSentence(edge_label)
+            ner_lang.addSentence(ner)
+
         sent_index  = makeIndexes(input_lang, sentence)
         label_index = makeIndexes(dep_lang, edge_label)
+        ner_index   = makeIndexes(ner_lang, ner)
         
         data.append((relation2id[relation], sent_index, edge_index, label_index, entity_subj, entity_obj,
-            type_subj, type_obj))
+            ner_index))
 
     if is_train:
-        return input_lang, dep_lang, data
+        return input_lang, dep_lang, ner_lang, data
     else:
         return data
