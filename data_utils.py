@@ -87,12 +87,13 @@ def load_data(file_name, input_lang=None, dep_lang=None, ner_lang=None):
         entity_obj  = list(range(datapoint['obj_start']+1, datapoint['obj_end']+2))
         # type_subj   = datapoint['subj_type']
         # type_obj    = datapoint['obj_type']
-        ner         = datapoint['stanford_ner']
+        ner         = ['O'] + datapoint['stanford_ner']
         for i in ner:
             if i in entity_subj:
                 i += '-SUBJ'
             elif i in entity_obj:
                 i += '-OBJ'
+        print (ner)
 
 
 
