@@ -37,7 +37,7 @@ class EncoderRNN(nn.Module):
         # lemma = torch.tensor(lemma, dtype=torch.long, device=device).view(-1, 1)
         # lemma_embeded = self.lemma_embedding(lemma).view(-1, 1, 5)
 
-        ner_embeded = self.ner_embedding(ner).view(-1, 1, self.30)
+        ner_embeded = self.ner_embedding(ner).view(-1, 1, 30)
         
         embedded = self.embedding(input).view(-1, 1, 300)
         embedded = torch.cat((embedded, ner_embeded), dim=2)
