@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
         eval(dev_data, encoder, classifier)
 
-        os.mkdir("model_ner/%d"%epoch)
-        PATH = "model_ner/%d"%epoch
+        os.mkdir("model_ner2/%d"%epoch)
+        PATH = "model_ner2/%d"%epoch
         torch.save(encoder, PATH+"/encoder")
         torch.save(classifier, PATH+"/classifier")
