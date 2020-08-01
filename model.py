@@ -22,13 +22,13 @@ class EncoderRNN(nn.Module):
 
         self.embedding = nn.Embedding.from_pretrained(pretrained, freeze=False)
         # self.lemma_embedding = nn.Embedding(2, 5)
-        self.ner_embedding = nn.Embedding(ner_size, hidden_size)
+        self.ner_embedding = nn.Embedding(ner_size, 30)
         self.syn_embedding = nn.Embedding(syn_size, hidden_size)
         
-        self.rnn = nn.LSTM(embedding_size + hidden_size, hidden_size, bidirectional=True)
+        self.rnn = nn.LSTM(embedding_size + 30, hidden_size, bidirectional=True)
 
         self.linear  = nn.Linear(hidden_size * 2,   hidden_size)
-        self.linear2 = nn.Linear(hidden_size + (embedding_size+hidden_size)*2, hidden_size)
+        self.linear2 = nn.Linear(hidden_size + (embedding_size+30)*2, hidden_size)
 
         self.attn = nn.Linear(hidden_size, 1)
 

@@ -63,8 +63,6 @@ def load_data(file_name, input_lang=None, dep_lang=None, ner_lang=None):
 
     is_train = False
 
-    s = set()
-
     if input_lang is None:
         input_lang  = Lang("input")
         dep_lang    = Lang("dep")
@@ -75,25 +73,23 @@ def load_data(file_name, input_lang=None, dep_lang=None, ner_lang=None):
 
     for datapoint in json.load(open(file_name)):
         
-        relation    = datapoint['relation']
-        s.add(relation)
-        sentence    = ['$ROOT$'] + datapoint['token']
+        relation          = datapoint['relation']
+        sentence          = ['$ROOT$'] + datapoint['token']
         
-        edge_index  = [list(range(1, len(datapoint['stanford_head'])+1)), 
-                    datapoint['stanford_head']]
-        edge_label  = datapoint['stanford_deprel']
+        edge_index        = [list(range(1, len(datapoint['stanford_head'])+1)), 
+                            datapoint['stanford_head']]
+        edge_label        = datapoint['stanford_deprel']
 
-        entity_subj = list(range(datapoint['subj_start']+1, datapoint['subj_end']+2))
-        entity_obj  = list(range(datapoint['obj_start']+1, datapoint['obj_end']+2))
-        # type_subj   = datapoint['subj_type']
-        # type_obj    = datapoint['obj_type']
-        ner         = ['O'] + datapoint['stanford_ner']
-        for i in range(len(ner)):
-            if i in entity_subj:
-                ner[i] += '-SUBJ'
-            elif i in entity_obj:
-                ner[i] += '-OBJ'
-
+        entity_subj       = list(range(datapoint['subj_start']+1, datapoint['subj_end']+2))
+        entity_obj        = list(range(datapoint['obj_start']+1, datapoint['obj_end']+2))
+        type_subj         = datapoint['subj_type']
+        type_obj          = datapoint['obj_type']
+        ner               = ['O'] + datapoint['stanford_ner']
+        
+        ss, se            = datapoint['subj_start'], datapoint['subj_end']
+        os, oe            = datapoint['obj_start'], datapoint['obj_end']
+        sentence[ss:se+1] = ['SUBJ-'+type_subj] * (se-ss+1)
+        sentence[os:oe+1] = ['OBJ-'+type_obj] * (oe-os+1)
 
 
         if is_train:
