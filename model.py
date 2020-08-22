@@ -1,89 +1,184 @@
+"""
+A rnn model for relation extraction, written in pytorch.
+"""
+import math
+import numpy as np
 import torch
-import torch.nn as nn
-from torch import optim
+from torch import nn
+from torch.nn import init
 import torch.nn.functional as F
-import random
-from torch_geometric.nn import GCNConv
 
-SEED = 1234
+from utils import constant, torch_utils
 
-random.seed(SEED)
-torch.manual_seed(SEED)
-torch.cuda.manual_seed(SEED)
-torch.backends.cudnn.deterministic = True
-
-device = torch.device('cpu')#"cuda" if torch.cuda.is_available() else "cpu")
-
-class EncoderRNN(nn.Module):
-    def __init__(self, input_size, embedding_size, syn_size, ner_size, hidden_size, pretrained):
-        super(EncoderRNN, self).__init__()
-
-        self.hidden_size = hidden_size
-
-        self.embedding = nn.Embedding.from_pretrained(pretrained, freeze=False)
-        # self.lemma_embedding = nn.Embedding(2, 5)
-        self.ner_embedding = nn.Embedding(ner_size, 30)
-        self.syn_embedding = nn.Embedding(syn_size, hidden_size)
+class RelationModel(object):
+    """ A wrapper class for the training and evaluation of models. """
+    def __init__(self, opt, emb_matrix=None):
+        self.opt = opt
+        self.model = SynGCN(opt, emb_matrix)
+        self.criterion = nn.CrossEntropyLoss()
+        self.parameters = [p for p in self.model.parameters() if p.requires_grad]
+        if opt['cuda']:
+            self.model.cuda()
+            self.criterion.cuda()
+        self.optimizer = torch_utils.get_optimizer(opt['optim'], self.parameters, opt['lr'])
+    
+    def update(self, batch):
+        """ Run a step of forward and backward model update. """
+        inputs = list()
+        if self.opt['cuda']:
+            for b in constant.KEYS:
+                inputs += [batch[b].cuda()]
+            labels = batch.rel.cuda()
+        else:
+            for b in constant.KEYS:
+                inputs += [batch[b]]
+            labels = batch.rel
+        batch_size = labels.size(0)
+        # step forward
+        self.model.train()
+        self.optimizer.zero_grad()
+        logits, _ = self.model(inputs, batch_size)
+        loss = self.criterion(logits, labels)
         
-        self.rnn = nn.LSTM(embedding_size + 30, hidden_size, bidirectional=True)
+        # backward
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt['max_grad_norm'])
+        self.optimizer.step()
+        loss_val = loss.data.item()
+        return loss_val
 
-        self.linear  = nn.Linear(hidden_size * 2,   hidden_size)
-        self.linear2 = nn.Linear(hidden_size + (embedding_size+30)*2, hidden_size)
+    def predict(self, batch):
+        """ Run forward prediction. If unsort is True, recover the original order of the batch. """
+        inputs = list()
+        if self.opt['cuda']:
+            for b in constant.KEYS:
+                inputs += [batch[b].cuda()]
+            labels = batch.rel.cuda()
+        else:
+            for b in constant.KEYS:
+                inputs += [batch[b]]
+            labels = batch.rel
 
-        self.attn = nn.Linear(hidden_size, 1)
+        batch_size = labels.size(0)
 
-    def forward(self, input, syn_labels, subj_pos, obj_pos, edge_index, ner):
-        # lemma = [1 if i in subj_pos or i in obj_pos else 0 for i in range(input.size(0))]
-        # lemma = torch.tensor(lemma, dtype=torch.long, device=device).view(-1, 1)
-        # lemma_embeded = self.lemma_embedding(lemma).view(-1, 1, 5)
+        # forward
+        self.model.eval()
+        logits, _ = self.model(inputs, batch_size)
+        loss = self.criterion(logits, labels)
+        probs = F.softmax(logits, dim=1).data.cpu().numpy().tolist()
+        predictions = np.argmax(logits.data.cpu().numpy(), axis=1).tolist()
 
-        ner_embeded = self.ner_embedding(ner).view(-1, 1, 30)
+        return predictions, probs, loss.data.item()
+
+    def update_lr(self, new_lr):
+        torch_utils.change_lr(self.optimizer, new_lr)
+
+    def save(self, filename, epoch):
+        params = {
+                'model': self.model.state_dict(),
+                'config': self.opt,
+                'epoch': epoch
+                }
+        try:
+            torch.save(params, filename)
+            print("model saved to {}".format(filename))
+        except BaseException:
+            print("[Warning: Saving failed... continuing anyway.]")
+
+    def load(self, filename):
+        try:
+            checkpoint = torch.load(filename)
+        except BaseException:
+            print("Cannot load model from {}".format(filename))
+            exit()
+        self.model.load_state_dict(checkpoint['model'])
+        self.opt = checkpoint['config']
+
+class SynGCN(nn.Module):
+    """ A sequence model for relation extraction. """
+
+    def __init__(self, opt, emb_matrix=None):
+        super(SynGCN, self).__init__()
+        self.drop = nn.Dropout(opt['dropout'])
+        self.emb = nn.Embedding(opt['vocab_size'], opt['emb_dim'], padding_idx=constant.PAD_ID)
+        if opt['pos_dim'] > 0:
+            self.pos_emb = nn.Embedding(len(constant.POS_TO_ID), opt['pos_dim'],
+                    padding_idx=constant.PAD_ID)
+        if opt['ner_dim'] > 0:
+            self.ner_emb = nn.Embedding(len(constant.NER_TO_ID), opt['ner_dim'],
+                    padding_idx=constant.PAD_ID)
         
-        embedded = self.embedding(input).view(-1, 1, 300)
-        embedded = torch.cat((embedded, ner_embeded), dim=2)
+        input_size = opt['emb_dim'] + opt['pos_dim'] + opt['ner_dim']
+        self.rnn = nn.LSTM(input_size, opt['hidden_dim'], opt['num_layers'], batch_first=True,\
+                dropout=opt['dropout'], bidirectional=True)
+
+        self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
+
+        self.opt = opt
+        self.topn = self.opt.get('topn', 1e10)
+        self.use_cuda = opt['cuda']
+        self.emb_matrix = emb_matrix
+        self.init_weights()
+    
+    def init_weights(self):
+        if self.emb_matrix is None:
+            self.emb.weight.data[1:,:].uniform_(-1.0, 1.0) # keep padding dimension to be 0
+        else:
+            self.emb_matrix = torch.from_numpy(self.emb_matrix)
+            self.emb.weight.data.copy_(self.emb_matrix)
+        if self.opt['pos_dim'] > 0:
+            self.pos_emb.weight.data[1:,:].uniform_(-1.0, 1.0)
+        if self.opt['ner_dim'] > 0:
+            self.ner_emb.weight.data[1:,:].uniform_(-1.0, 1.0)
+
+        self.linear.bias.data.fill_(0)
+        init.xavier_uniform_(self.linear.weight, gain=1) # initialize linear layer
+
+        # decide finetuning
+        if self.topn <= 0:
+            print("Do not finetune word embedding layer.")
+            self.emb.weight.requires_grad = False
+        elif self.topn < self.opt['vocab_size']:
+            print("Finetune top {} word embeddings.".format(self.topn))
+            self.emb.weight.register_hook(lambda x: \
+                    torch_utils.keep_partial_grad(x, self.topn))
+        else:
+            print("Finetune all embeddings.")
+
+    def zero_state(self, batch_size): 
+        state_shape = (2*self.opt['num_layers'], batch_size, self.opt['hidden_dim'])
+        h0 = c0 = torch.zeros(*state_shape, requires_grad=False)
+        if self.use_cuda:
+            return h0.cuda(), c0.cuda()
+        else:
+            return h0, c0
+    
+    def forward(self, inputs, batch_size):
+        for i in range(len(inputs)-1):
+            inputs[i] = inputs[i].view(batch_size, -1)
+        words, masks, pos, ner, deprel, subj_pos, obj_pos, edge_index = inputs # unpack
+        s_len = words.size(1)
+        seq_lens = list(masks.data.eq(constant.PAD_ID).long().sum(1).squeeze())
+        # embedding lookup
+        word_inputs = self.emb(words)
+        inputs = [word_inputs]
+        if self.opt['pos_dim'] > 0:
+            inputs += [self.pos_emb(pos)]
+        if self.opt['ner_dim'] > 0:
+            inputs += [self.ner_emb(ner)]
+        inputs = self.drop(torch.cat(inputs, dim=2)) # add dropout to input
+        input_size = inputs.size(2)
         
-        syn_embedded         = self.syn_embedding(syn_labels).view(syn_labels.size(0), -1)
-        first_word_embedded  = embedded[edge_index[0],:,:].view(syn_labels.size(0), -1)
-        second_word_embedded = embedded[edge_index[1],:,:].view(syn_labels.size(0), -1)
-        syn_embedded         = torch.cat((syn_embedded, first_word_embedded, second_word_embedded), 1)
-        syn_embedded         = self.linear2(syn_embedded)
+        # rnn
+        h0, c0 = self.zero_state(batch_size)
+        inputs = nn.utils.rnn.pack_padded_sequence(inputs, seq_lens, batch_first=True)
+        outputs, (ht, ct) = self.rnn(inputs, (h0, c0))
+        outputs, output_lens = nn.utils.rnn.pad_packed_sequence(outputs, batch_first=True)
+        hidden = ht[-1,:,:] # get the outmost layer h_n
+        outputs = outputs
+        final_hidden = outputs[:,0,:]
 
-        output, hidden = self.rnn(embedded)
-        output  = self.linear(output)
-        outputs = output.view(input.size(0), -1)
-        
-        subj_vec = outputs[subj_pos[0]:subj_pos[-1]+1]
-        obj_vec = outputs[obj_pos[0]:obj_pos[-1]+1]
-        subj, sw = self.event_summary(subj_vec)
-        obj, ow = self.event_summary(obj_vec)
-        return outputs, subj, obj, sw, ow, syn_embedded
+        logits = self.linear(final_hidden)
+        return logits, final_hidden
+    
 
-    def event_summary(self, event):
-        attn_weights = F.softmax(torch.t(self.attn(event)), dim=1)
-        attn_applied = torch.bmm(attn_weights.unsqueeze(0),
-                                 event.unsqueeze(0))
-        return attn_applied[0, 0], attn_weights
-
-class Classifier(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
-        super(Classifier, self).__init__()
-
-        self.hidden_size = hidden_size
-
-        self.attn = nn.Linear(input_size, hidden_size, bias=False)
-        self.gcn = GCNConv(hidden_size, hidden_size)
-
-        self.out = nn.Linear(hidden_size * 3, output_size)
-        self.softmax = nn.LogSoftmax(dim=0)
-
-    def forward(self, encoder_outputs, syn_embeddeds, subj, obj, edge_index):
-        edge_weights = F.softmax(
-            torch.mm(
-                self.attn(encoder_outputs[0].view( 1,-1)), torch.t(syn_embeddeds)
-                )
-            , dim=1)
-        edge_weights = edge_weights.squeeze(0)
-        outputs = self.gcn(encoder_outputs, edge_index, edge_weights)
-        output = torch.cat((outputs[0], subj, obj))
-        output = self.softmax(self.out(output))
-        return output.unsqueeze(0)
