@@ -115,6 +115,9 @@ class SynGCN(nn.Module):
                 dropout=opt['dropout'], bidirectional=True)
 
         if opt['gcn']:
+            self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
+                    padding_idx=constant.PAD_ID)
+            self.attn = SynGCNAttention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['attn_dim'])
             self.gcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
             self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
         else:
@@ -136,6 +139,8 @@ class SynGCN(nn.Module):
             self.pos_emb.weight.data[1:,:].uniform_(-1.0, 1.0)
         if self.opt['ner_dim'] > 0:
             self.ner_emb.weight.data[1:,:].uniform_(-1.0, 1.0)
+        if self.opt['gcn'] and self.opt['deprel_dim'] > 0:
+            self.deprel_emb.weight.data[1:,:].uniform_(-1.0, 1.0)
 
         self.linear.bias.data.fill_(0)
         init.xavier_uniform_(self.linear.weight, gain=1) # initialize linear layer
@@ -162,7 +167,7 @@ class SynGCN(nn.Module):
     def forward(self, inputs, batch_size):
         for i in range(len(inputs)-1):
             inputs[i] = inputs[i].view(batch_size, -1)
-        words, masks, pos, ner, deprel, subj_pos, obj_pos, edge_index = inputs # unpack
+        words, masks, pos, ner, deprel, d_masks, subj_pos, obj_pos, edge_index = inputs # unpack
         s_len = words.size(1)
         seq_lens = list(masks.data.eq(constant.PAD_ID).long().sum(1).squeeze())
         # embedding lookup
@@ -180,17 +185,62 @@ class SynGCN(nn.Module):
         inputs = nn.utils.rnn.pack_padded_sequence(inputs, seq_lens, batch_first=True)
         outputs, (ht, ct) = self.rnn(inputs, (h0, c0))
         outputs, output_lens = nn.utils.rnn.pad_packed_sequence(outputs, batch_first=True)
-        hidden = self.drop(ht[-1,:,:]) # get the outmost layer h_n
+        # hidden = self.drop(ht[-1,:,:]) # get the outmost layer h_n
         outputs = self.drop(outputs)
 
         if self.opt['gcn']:
+            deprel = self.deprel_emb(deprel)
+            weights = self.attn(deprel, d_masks, outputs[:,0,:]).view(-1).nonzero().squeeze(1)
             outputs = outputs.reshape(s_len*batch_size, -1)
-            outputs = self.gcn(outputs, edge_index)
+            outputs = self.gcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
         
         final_hidden = outputs[:,0,:]
 
         logits = self.linear(final_hidden)
         return logits, final_hidden
+
+class SynGCNAttention(nn.Module):
+    """
+    A GCN layer with attention on deprel as edge weights.
+    """
+    
+    def __init__(self, input_size, query_size, attn_size):
+        super(SynGCNAttention, self).__init__()
+        self.input_size = input_size
+        self.query_size = query_size
+        self.attn_size = attn_size
+        self.ulinear = nn.Linear(input_size, attn_size)
+        self.vlinear = nn.Linear(query_size, attn_size, bias=False)
+        self.tlinear = nn.Linear(attn_size, 1)
+        self.init_weights()
+
+    def init_weights(self):
+        self.ulinear.weight.data.normal_(std=0.001)
+        self.vlinear.weight.data.normal_(std=0.001)
+        self.tlinear.weight.data.zero_() # use zero to give uniform attention at the beginning
+    
+    def forward(self, x, x_mask, q):
+        """
+        x : batch_size * seq_len * input_size
+        q : batch_size * query_size
+        f : batch_size * seq_len * feature_size
+        """
+        batch_size, seq_len, _ = x.size()
+
+        x_proj = self.ulinear(x.contiguous().view(-1, self.input_size)).view(
+            batch_size, seq_len, self.attn_size)
+        q_proj = self.vlinear(q.view(-1, self.query_size)).contiguous().view(
+            batch_size, self.attn_size).unsqueeze(1).expand(
+                batch_size, seq_len, self.attn_size)
+        projs = [x_proj, q_proj]
+        scores = self.tlinear(torch.tanh(sum(projs)).view(-1, self.attn_size)).view(
+            batch_size, seq_len)
+
+        # mask padding
+        scores.data.masked_fill_(x_mask.data, -float('inf'))
+        weights = F.softmax(scores, dim=1)
+
+        return weights
     
 

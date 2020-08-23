@@ -53,8 +53,9 @@ class BatchLoader(object):
             obj_positions = get_long_tensor(batch[5])
             for i in range(len(words)):
                 datalist += [Data(words=words[i], mask=torch.eq(words[i], 0), pos=pos[i], 
-                    ner=ner[i], deprel=deprel[i], subj_position=subj_positions[i], 
-                    obj_position=obj_positions[i], edge_index=torch.LongTensor(batch[7][i]),
+                    ner=ner[i], deprel=deprel[i], d_mask=torch.eq(deprel[i], 0), 
+                    subj_position=subj_positions[i], obj_position=obj_positions[i], 
+                    edge_index=torch.LongTensor(batch[7][i]),
                     rel=torch.LongTensor([batch[6][i]]))]
 
         self.data = DataLoader(datalist, batch_size=batch_size)
