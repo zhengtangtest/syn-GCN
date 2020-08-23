@@ -112,12 +112,13 @@ class SynGCN(nn.Module):
         
         input_size = opt['emb_dim'] + opt['pos_dim'] + opt['ner_dim']
         self.rnn = nn.LSTM(input_size, opt['hidden_dim'], opt['num_layers'], batch_first=True,\
-                dropout=opt['dropout'])
+                dropout=opt['dropout'], bidirectional=True)
 
         if opt['gcn']:
-            self.gcn = GCNConv(opt['hidden_dim'], opt['hidden_dim'])
-
-        self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
+            self.gcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
+            self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
+        else:
+            self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
 
         self.opt = opt
         self.topn = self.opt.get('topn', 1e10)
@@ -151,7 +152,7 @@ class SynGCN(nn.Module):
             print("Finetune all embeddings.")
 
     def zero_state(self, batch_size): 
-        state_shape = (self.opt['num_layers'], batch_size, self.opt['hidden_dim'])
+        state_shape = (2*self.opt['num_layers'], batch_size, self.opt['hidden_dim'])
         h0 = c0 = torch.zeros(*state_shape, requires_grad=False)
         if self.use_cuda:
             return h0.cuda(), c0.cuda()
