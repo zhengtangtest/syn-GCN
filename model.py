@@ -10,6 +10,8 @@ import torch.nn.functional as F
 
 from utils import constant, torch_utils
 
+from torch_geometric.nn import GCNConv
+
 class RelationModel(object):
     """ A wrapper class for the training and evaluation of models. """
     def __init__(self, opt, emb_matrix=None):
@@ -112,6 +114,9 @@ class SynGCN(nn.Module):
         self.rnn = nn.LSTM(input_size, opt['hidden_dim'], opt['num_layers'], batch_first=True,\
                 dropout=opt['dropout'], bidirectional=True)
 
+        if opt['gcn']:
+            self.gcn = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
+
         self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
 
         self.opt = opt
@@ -174,8 +179,14 @@ class SynGCN(nn.Module):
         inputs = nn.utils.rnn.pack_padded_sequence(inputs, seq_lens, batch_first=True)
         outputs, (ht, ct) = self.rnn(inputs, (h0, c0))
         outputs, output_lens = nn.utils.rnn.pad_packed_sequence(outputs, batch_first=True)
-        hidden = ht[-1,:,:] # get the outmost layer h_n
-        outputs = outputs
+        hidden = self.drop(ht[-1,:,:]) # get the outmost layer h_n
+        outputs = self.drop(outputs)
+
+        if self.opt['gcn']:
+            outputs = outputs.reshape(s_len*batch_size, -1)
+            outputs = self.gcn(outputs, edge_index)
+            outputs = outputs.reshape(batch_size, s_len, -1)
+        
         final_hidden = outputs[:,0,:]
 
         logits = self.linear(final_hidden)
