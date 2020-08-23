@@ -32,7 +32,6 @@ parser.set_defaults(lower=False)
 parser.add_argument('--gcn', dest='attn', action='store_true', help='Use attention layer.')
 parser.add_argument('--no-gcn', dest='attn', action='store_false')
 parser.set_defaults(gcn=True)
-parser.add_argument('--gcn_dim', type=int, default=200, help='Attention size.')
 parser.add_argument('--deprel_dim', type=int, default=30, help='Position encoding dimension.')
 
 parser.add_argument('--lr', type=float, default=1.0, help='Applies to SGD and Adagrad.')

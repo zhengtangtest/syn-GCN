@@ -112,12 +112,12 @@ class SynGCN(nn.Module):
         
         input_size = opt['emb_dim'] + opt['pos_dim'] + opt['ner_dim']
         self.rnn = nn.LSTM(input_size, opt['hidden_dim'], opt['num_layers'], batch_first=True,\
-                dropout=opt['dropout'], bidirectional=True)
+                dropout=opt['dropout'])
 
         if opt['gcn']:
-            self.gcn = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
+            self.gcn = GCNConv(opt['hidden_dim'], opt['hidden_dim'])
 
-        self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
+        self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
 
         self.opt = opt
         self.topn = self.opt.get('topn', 1e10)
