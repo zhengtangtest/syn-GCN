@@ -191,6 +191,7 @@ class SynGCN(nn.Module):
         if self.opt['gcn']:
             deprel = self.deprel_emb(deprel)
             weights = self.attn(deprel, d_masks, outputs[:,0,:]).view(-1).nonzero().squeeze(1)
+            print (weights)
             outputs = outputs.reshape(s_len*batch_size, -1)
             outputs = self.gcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
@@ -240,8 +241,6 @@ class SynGCNAttention(nn.Module):
         # mask padding
         scores.data.masked_fill_(x_mask.data, -float('inf'))
         weights = F.softmax(scores, dim=1)
-
-        print (torch.isinf(weights))
 
         return weights
     
