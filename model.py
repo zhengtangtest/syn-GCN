@@ -241,7 +241,7 @@ class SynGCNAttention(nn.Module):
         scores.data.masked_fill_(x_mask.data, -float('inf'))
         weights = F.softmax(scores, dim=1)
 
-        print (weights)
+        print (torch.isinf(weights))
 
         return weights
     
