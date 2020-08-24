@@ -76,8 +76,8 @@ class BatchLoader(object):
             tokens[ss:se+1] = ['SUBJ-'+d['subj_type']] * (se-ss+1)
             tokens[os:oe+1] = ['OBJ-'+d['obj_type']] * (oe-os+1)
             tokens = map_to_ids(tokens, vocab.word2id)
-            pos = map_to_ids(['$ROOT$']+d['stanford_pos'], constant.POS_TO_ID)
-            ner = map_to_ids(['$ROOT$']+d['stanford_ner'], constant.NER_TO_ID)
+            pos = map_to_ids(d['stanford_pos'], constant.POS_TO_ID)
+            ner = map_to_ids(d['stanford_ner'], constant.NER_TO_ID)
             deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
             edge_index = [d['stanford_head'], list(range(1, len(d['stanford_head'])+1))]
             l = len(tokens)
