@@ -167,6 +167,7 @@ class SynGCN(nn.Module):
     def forward(self, inputs, batch_size):
         for i in range(len(inputs)-1):
             inputs[i] = inputs[i].view(batch_size, -1)
+        print (words)
         words, masks, pos, ner, deprel, d_masks, subj_pos, obj_pos, edge_index = inputs # unpack
         s_len = words.size(1)
         seq_lens = list(masks.data.eq(constant.PAD_ID).long().sum(1).squeeze())
