@@ -157,7 +157,7 @@ class SynGCN(nn.Module):
             print("Finetune all embeddings.")
 
     def zero_state(self, batch_size): 
-        state_shape = (2*self.opt['num_layers'], batch_size, self.opt['hidden_dim'])
+        state_shape = (self.opt['num_layers'], batch_size, self.opt['hidden_dim'])
         h0 = c0 = torch.zeros(*state_shape, requires_grad=False)
         if self.use_cuda:
             return h0.cuda(), c0.cuda()
