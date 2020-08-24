@@ -196,7 +196,7 @@ class SynGCN(nn.Module):
             outputs = self.gcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
         
-        final_hidden = hidden#outputs[:,0,:]
+        final_hidden = outputs[:,0,:]
 
         logits = self.linear(final_hidden)
         return logits, final_hidden
