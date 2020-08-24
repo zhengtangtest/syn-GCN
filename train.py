@@ -29,8 +29,8 @@ parser.add_argument('--lower', dest='lower', action='store_true', help='Lowercas
 parser.add_argument('--no-lower', dest='lower', action='store_false')
 parser.set_defaults(lower=False)
 
-parser.add_argument('--gcn', dest='attn', action='store_true', help='Use attention layer.')
-parser.add_argument('--no-gcn', dest='attn', action='store_false')
+parser.add_argument('--gcn', dest='gcn', action='store_true', help='Use attention layer.')
+parser.add_argument('--no-gcn', dest='gcn', action='store_false')
 parser.set_defaults(gcn=True)
 parser.add_argument('--attn_dim', type=int, default=20, help='Attention size.')
 parser.add_argument('--deprel_dim', type=int, default=30, help='Deprel embedding dimension.')
