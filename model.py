@@ -168,7 +168,6 @@ class SynGCN(nn.Module):
         for i in range(len(inputs)-1):
             inputs[i] = inputs[i].view(batch_size, -1)
         words, masks, pos, ner, deprel, d_masks, subj_pos, obj_pos, edge_index = inputs # unpack
-        print (words)
         s_len = words.size(1)
         seq_lens = list(masks.data.eq(constant.PAD_ID).long().sum(1).squeeze())
         # embedding lookup

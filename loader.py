@@ -69,10 +69,10 @@ class BatchLoader(object):
             tokens = d['token']
             if opt['lower']:
                 tokens = [t.lower() for t in tokens]
-            tokens = ['$ROOT$'] + tokens
+            tokens = tokens
             # anonymize tokens
-            ss, se = d['subj_start']+1, d['subj_end']+1
-            os, oe = d['obj_start']+1, d['obj_end']+1
+            ss, se = d['subj_start'], d['subj_end']
+            os, oe = d['obj_start'], d['obj_end']
             tokens[ss:se+1] = ['SUBJ-'+d['subj_type']] * (se-ss+1)
             tokens[os:oe+1] = ['OBJ-'+d['obj_type']] * (oe-os+1)
             tokens = map_to_ids(tokens, vocab.word2id)
