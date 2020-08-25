@@ -49,19 +49,19 @@ assert opt['vocab_size'] == vocab.size, "Vocab size must match that in the saved
 # load data
 data_file = opt['data_dir'] + '/{}.json'.format(args.dataset)
 print("Loading data from {} with batch size {}...".format(data_file, opt['batch_size']))
-batch = BatchLoader(data_file, opt['batch_size'], opt, vocab, evaluation=True)
+eval_batch = BatchLoader(data_file, opt['batch_size'], opt, vocab, evaluation=True)
 
 helper.print_config(opt)
 id2label = dict([(v,k) for k,v in constant.LABEL_TO_ID.items()])
 
 predictions = []
 all_probs = []
-for batch in batch.data:
+for batch in eval_batch.data:
     preds, probs, _ = model.predict(batch)
     predictions += preds
     all_probs += probs
 predictions = [id2label[p] for p in predictions]
-p, r, f1 = scorer.score(batch.gold(), predictions, verbose=True)
+p, r, f1 = scorer.score(eval_batch.gold(), predictions, verbose=True)
 
 # save probability scores
 if len(args.out) > 0:
