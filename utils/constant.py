@@ -35,4 +35,4 @@ LABEL_TO_ID = {'no_relation': 0, 'per:title': 1, 'org:top_members/employees': 2,
 
 INFINITY_NUMBER = 1e12
 
-KEYS = ['words', 'mask', 'pos', 'ner', 'deprel', 'd_mask', 'subj_position', 'obj_position', 'edge_index']
+KEYS = ['words', 'mask', 'pos', 'ner', 'deprel', 'd_mask', 'subj_mask', 'obj_mask', 'edge_index']
