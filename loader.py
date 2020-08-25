@@ -84,7 +84,7 @@ class BatchLoader(object):
             subj_mask = [1 if i in range(ss, se+1) else 0 for i in range(len(tokens))]
             obj_mask = [1 if i in range(os, oe+1) else 0 for i in range(len(tokens))]
             relation = constant.LABEL_TO_ID[d['relation']]
-            processed += [(tokens, pos, ner, deprel, subj_positions, obj_positions, relation, edge_index)]
+            processed += [(tokens, pos, ner, deprel, subj_mask, obj_mask, relation, edge_index)]
         return processed
 
     def gold(self):
