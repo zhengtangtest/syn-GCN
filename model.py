@@ -204,6 +204,8 @@ class SynGCN(nn.Module):
             subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
             obj = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
 
+            print (subj.size())
+            print (obj.size())
             final_hidden = self.drop(torch.cat([subj, obj]))
         
         else:
@@ -218,7 +220,7 @@ class Attention(nn.Module):
     """
     
     def __init__(self, input_size, query_size, attn_size):
-        super(SynGCNAttention, self).__init__()
+        super(Attention, self).__init__()
         self.input_size = input_size
         self.query_size = query_size
         self.attn_size = attn_size
