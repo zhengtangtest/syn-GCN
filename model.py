@@ -198,8 +198,8 @@ class SynGCN(nn.Module):
             outputs = self.gcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
-            subj_weights = self.subj_attn(outputs, outputs[:,0,:])
-            obj_weights  = self.obj_attn(outputs, outputs[:,0,:])
+            subj_weights = self.subj_attn(outputs, subj_mask, outputs[:,0,:])
+            obj_weights  = self.obj_attn(outputs, obj_mask, outputs[:,0,:])
 
             subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
             obj = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
