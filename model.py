@@ -204,7 +204,7 @@ class SynGCN(nn.Module):
             subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
             obj = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
 
-            final_hidden = self.drop(torch.cat([subj, obj], , dim=1))
+            final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
         
         else:
             final_hidden = outputs[:,0,:]
