@@ -185,7 +185,7 @@ class SynGCN(nn.Module):
         inputs = nn.utils.rnn.pack_padded_sequence(inputs, seq_lens, batch_first=True)
         outputs, (ht, ct) = self.rnn(inputs, (h0, c0))
         outputs, output_lens = nn.utils.rnn.pad_packed_sequence(outputs, batch_first=True)
-        hidden = self.drop(ht[-1,:,:]) # get the outmost layer h_n
+        # hidden = self.drop(ht[-1,:,:]) # get the outmost layer h_n
         outputs = self.drop(outputs)
 
         if self.opt['gcn']:
