@@ -49,12 +49,12 @@ class BatchLoader(object):
             pos = get_long_tensor(batch[1])
             ner = get_long_tensor(batch[2])
             deprel = get_long_tensor(batch[3])
-            subj_positions = get_long_tensor(batch[4])
-            obj_positions = get_long_tensor(batch[5])
+            subj_masks = get_long_tensor(batch[4])
+            obj_masks = get_long_tensor(batch[5])
             for i in range(len(words)):
                 datalist += [Data(words=words[i], mask=torch.eq(words[i], 0), pos=pos[i], 
                     ner=ner[i], deprel=deprel[i], d_mask=torch.eq(deprel[i], 0), 
-                    subj_position=subj_positions[i], obj_position=obj_positions[i], 
+                    subj_mask=torch.eq(subj_masks[i], 0), obj_mask=torch.eq(obj_masks[i], 0), 
                     edge_index=torch.LongTensor(batch[7][i]),
                     rel=torch.LongTensor([batch[6][i]]))]
 
@@ -81,8 +81,8 @@ class BatchLoader(object):
             deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
             edge_index = [d['stanford_head'], list(range(1, len(d['stanford_head'])+1))]
             l = len(tokens)
-            subj_positions = get_positions(ss, se, l)
-            obj_positions = get_positions(os, oe, l)
+            subj_mask = [1 if i in [ss:se+1] else 0 for i in range(len(tokens))]
+            obj_mask = [1 if i in [os:oe+1] else 0 for i in range(len(tokens))]
             relation = constant.LABEL_TO_ID[d['relation']]
             processed += [(tokens, pos, ner, deprel, subj_positions, obj_positions, relation, edge_index)]
         return processed
@@ -99,11 +99,6 @@ class BatchLoader(object):
 def map_to_ids(tokens, vocab):
     ids = [vocab[t] if t in vocab else constant.UNK_ID for t in tokens]
     return ids
-
-def get_positions(start_idx, end_idx, length):
-    """ Get subj/obj position sequence. """
-    return list(range(-start_idx, 0)) + [0]*(end_idx - start_idx + 1) + \
-            list(range(1, length-end_idx))
 
 def get_long_tensor(tokens_list):
     """ Convert list of list of tokens to a padded LongTensor. """

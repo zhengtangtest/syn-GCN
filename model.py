@@ -117,11 +117,13 @@ class SynGCN(nn.Module):
         if opt['gcn']:
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
-            self.attn = SynGCNAttention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['attn_dim'])
+            self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['attn_dim'])
             self.gcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
-            self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
-        else:
-            self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
+
+            self.subj_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
+            self.obj_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
+
+        self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
 
         self.opt = opt
         self.topn = self.opt.get('topn', 1e10)
@@ -167,7 +169,7 @@ class SynGCN(nn.Module):
     def forward(self, inputs, batch_size):
         for i in range(len(inputs)-1):
             inputs[i] = inputs[i].view(batch_size, -1)
-        words, masks, pos, ner, deprel, d_masks, subj_pos, obj_pos, edge_index = inputs # unpack
+        words, masks, pos, ner, deprel, d_masks, subj_mask, obj_mask, edge_index = inputs # unpack
         s_len = words.size(1)
         seq_lens = list(masks.data.eq(constant.PAD_ID).long().sum(1).squeeze())
         # embedding lookup
@@ -195,13 +197,22 @@ class SynGCN(nn.Module):
             outputs = outputs.reshape(s_len*batch_size, -1)
             outputs = self.gcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
+
+            subj_weights = self.subj_attn(outputs, outputs[:,0,:])
+            obj_weights  = self.obj_attn(outputs, outputs[:,0,:])
+
+            subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+            obj = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+
+            final_hidden = self.drop(torch.cat([subj, obj]))
         
-        final_hidden = outputs[:,0,:]
+        else:
+            final_hidden = outputs[:,0,:]
 
         logits = self.linear(final_hidden)
         return logits, final_hidden
 
-class SynGCNAttention(nn.Module):
+class Attention(nn.Module):
     """
     A GCN layer with attention on deprel as edge weights.
     """
