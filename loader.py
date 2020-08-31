@@ -81,10 +81,10 @@ class BatchLoader(object):
             deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
             edge_index = [d['stanford_head'], list(range(1, len(d['stanford_head'])+1))]
             l = len(tokens)
-            subj_mask = [1 if i in range(ss, se+1) else 0 for i in range(len(tokens))]
-            obj_mask = [1 if i in range(os, oe+1) else 0 for i in range(len(tokens))]
+            subj_positions = get_positions(d['subj_start'], d['subj_end'], l)
+            obj_positions = get_positions(d['obj_start'], d['obj_end'], l)
             relation = constant.LABEL_TO_ID[d['relation']]
-            processed += [(tokens, pos, ner, deprel, subj_mask, obj_mask, relation, edge_index)]
+            processed += [(tokens, pos, ner, deprel, subj_positions, obj_positions, relation, edge_index)]
         return processed
 
     def gold(self):
@@ -95,7 +95,11 @@ class BatchLoader(object):
         #return 50
         return len(self.data)
 
-
+def get_positions(start_idx, end_idx, length):
+    """ Get subj/obj position sequence. """
+    return list(range(-start_idx, 0)) + [0]*(end_idx - start_idx + 1) + \
+            list(range(1, length-end_idx))
+            
 def map_to_ids(tokens, vocab):
     ids = [vocab[t] if t in vocab else constant.UNK_ID for t in tokens]
     return ids
