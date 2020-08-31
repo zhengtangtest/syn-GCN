@@ -254,4 +254,3 @@ class Attention(nn.Module):
 
         return weights
     
-© 2020 GitHub, Inc.
