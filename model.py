@@ -137,8 +137,8 @@ class SynGCN(nn.Module):
             self.pos_emb.weight.data[1:,:].uniform_(-1.0, 1.0)
         if self.opt['ner_dim'] > 0:
             self.ner_emb.weight.data[1:,:].uniform_(-1.0, 1.0)
-        if self.opt['gcn'] and self.opt['deprel_dim'] > 0:
-            self.deprel_emb.weight.data[1:,:].uniform_(-1.0, 1.0)
+        if self.opt['attn']:
+            self.pe_emb.weight.data.uniform_(-1.0, 1.0)
 
         self.linear.bias.data.fill_(0)
         init.xavier_uniform_(self.linear.weight, gain=1) # initialize linear layer
