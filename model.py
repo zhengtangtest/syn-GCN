@@ -120,9 +120,9 @@ class SynGCN(nn.Module):
             self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['attn_dim'])
             self.gcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
 
-        self.entity_attn = Attention(2*opt['hidden_dim'], 2*opt['hidden_dim'], opt['hidden_dim'])
+            self.entity_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
 
-        self.linear = nn.Linear(4*opt['hidden_dim'], opt['num_class'])
+        self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
 
         self.opt = opt
         self.topn = self.opt.get('topn', 1e10)
@@ -190,22 +190,13 @@ class SynGCN(nn.Module):
         outputs = self.drop(outputs)
 
         if self.opt['gcn']:
-            # deprel = self.deprel_emb(deprel)
-            # weights = self.attn(deprel, d_masks, outputs[:,0,:]).view(-1)
-            # weights = weights[weights.nonzero()].squeeze(1)
+            deprel = self.deprel_emb(deprel)
+            weights = self.attn(deprel, d_masks, outputs[:,0,:]).view(-1)
+            weights = weights[weights.nonzero()].squeeze(1)
             outputs = outputs.reshape(s_len*batch_size, -1)
-            outputs = self.gcn(outputs, edge_index)#, weights)
+            outputs = self.gcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
-            # subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
-            # obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
-
-            # subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
-            # obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
-
-            # final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
-            final_hidden = outputs[:,0,:]
-        else:
             subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
             obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
 
@@ -213,8 +204,9 @@ class SynGCN(nn.Module):
             obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
 
             final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
-
-            # final_hidden = outputs[:,0,:]
+        
+        else:
+            final_hidden = outputs[:,0,:]
 
         logits = self.linear(final_hidden)
         return logits, final_hidden
@@ -262,4 +254,4 @@ class Attention(nn.Module):
 
         return weights
     
-
+© 2020 GitHub, Inc.
