@@ -17,7 +17,6 @@ def parse_args():
     parser.add_argument('--wv_file', default='glove.840B.300d.txt', help='GloVe vector file.')
     parser.add_argument('--wv_dim', type=int, default=300, help='GloVe vector dimension.')
     parser.add_argument('--min_freq', type=int, default=0, help='If > 0, use min_freq as the cutoff.')
-    parser.add_argument('--lower', action='store_true', help='If specified, lowercase all words.')
     
     args = parser.parse_args()
     return args
@@ -42,9 +41,6 @@ def main():
     train_tokens = load_tokens(train_file)
     dev_tokens = load_tokens(dev_file)
     test_tokens = load_tokens(test_file)
-    if args.lower:
-        train_tokens, dev_tokens, test_tokens = [[t.lower() for t in tokens] for tokens in\
-                (train_tokens, dev_tokens, test_tokens)]
 
     # load glove
     print("loading glove...")
@@ -75,7 +71,7 @@ def load_tokens(filename):
         data = json.load(infile)
         tokens = []
         for d in data:
-            tokens += d['token']
+            tokens += d[2]
     print("{} tokens from {} examples loaded from {}.".format(len(tokens), len(data), filename))
     return tokens
 
@@ -88,7 +84,7 @@ def build_vocab(tokens, glove_vocab, min_freq):
     else:
         v = sorted([t for t in counter if t in glove_vocab], key=counter.get, reverse=True)
     # add special tokens and entity mask tokens
-    v = constant.VOCAB_PREFIX + entity_masks() + v
+    v = constant.VOCAB_PREFIX + ['SUBJ', 'OBJ'] + v
     print("vocab built with {}/{} words.".format(len(v), len(counter)))
     return v
 
@@ -98,14 +94,6 @@ def count_oov(tokens, vocab):
     matched = sum(c[t] for t in vocab)
     return total, total-matched
 
-def entity_masks():
-    """ Get all entity mask tokens as a list. """
-    masks = []
-    subj_entities = list(constant.SUBJ_NER_TO_ID.keys())[2:]
-    obj_entities = list(constant.OBJ_NER_TO_ID.keys())[2:]
-    masks += ["SUBJ-" + e for e in subj_entities]
-    masks += ["OBJ-" + e for e in obj_entities]
-    return masks
 
 if __name__ == '__main__':
     main()

@@ -27,7 +27,7 @@ class BatchLoader(object):
         data = sorted(data, key=lambda d: len(d[0]), reverse=True)
         
         id2label = dict([(v,k) for k,v in constant.LABEL_TO_ID.items()])
-        self.labels = [id2label[d[6]] for d in data] 
+        self.labels = [id2label[d[4]] for d in data] 
         self.num_examples = len(data)
 
         # chunk into batches
@@ -36,7 +36,7 @@ class BatchLoader(object):
         datalist = list()
         for i, batch in enumerate(data):
             batch = list(zip(*batch))
-            assert len(batch) == 8
+            assert len(batch) == 6
             
             # word dropout
             if not self.eval:
@@ -46,17 +46,15 @@ class BatchLoader(object):
 
             # convert to tensors
             words = get_long_tensor(words)
-            pos = get_long_tensor(batch[1])
-            ner = get_long_tensor(batch[2])
-            deprel = get_long_tensor(batch[3])
-            subj_masks = get_long_tensor(batch[4])
-            obj_masks = get_long_tensor(batch[5])
+            deprel = get_long_tensor(batch[1])
+            subj_masks = get_long_tensor(batch[2])
+            obj_masks = get_long_tensor(batch[3])
             for i in range(len(words)):
-                datalist += [Data(words=words[i], mask=torch.eq(words[i], 0), pos=pos[i], 
-                    ner=ner[i], deprel=deprel[i], d_mask=torch.eq(deprel[i], 0), 
+                datalist += [Data(words=words[i], mask=torch.eq(words[i], 0), 
+                    deprel=deprel[i], d_mask=torch.eq(deprel[i], 0), 
                     subj_mask=torch.eq(subj_masks[i], 0), obj_mask=torch.eq(obj_masks[i], 0), 
-                    edge_index=torch.LongTensor(batch[7][i]),
-                    rel=torch.LongTensor([batch[6][i]]))]
+                    edge_index=torch.LongTensor(batch[5][i]),
+                    rel=torch.LongTensor([batch[4][i]]))]
 
         self.data = DataLoader(datalist, batch_size=batch_size)
 
@@ -66,25 +64,22 @@ class BatchLoader(object):
         """ Preprocess the data and convert to ids. """
         processed = []
         for d in data:
-            tokens = d['token']
-            if opt['lower']:
-                tokens = [t.lower() for t in tokens]
-            tokens = ['<ROOT>'] + tokens
-            # anonymize tokens
-            ss, se = d['subj_start']+1, d['subj_end']+1
-            os, oe = d['obj_start']+1, d['obj_end']+1
-            tokens[ss:se+1] = ['SUBJ-'+d['subj_type']] * (se-ss+1)
-            tokens[os:oe+1] = ['OBJ-'+d['obj_type']] * (oe-os+1)
-            tokens = map_to_ids(tokens, vocab.word2id)
-            pos = map_to_ids(['<ROOT>']+d['stanford_pos'], constant.POS_TO_ID)
-            ner = map_to_ids(['<ROOT>']+d['stanford_ner'], constant.NER_TO_ID)
-            deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
-            edge_index = [d['stanford_head'], list(range(1, len(d['stanford_head'])+1))]
-            l = len(tokens)
-            subj_mask = [1 if i in range(ss, se+1) else 0 for i in range(len(tokens))]
-            obj_mask = [1 if i in range(os, oe+1) else 0 for i in range(len(tokens))]
-            relation = constant.LABEL_TO_ID[d['relation']]
-            processed += [(tokens, pos, ner, deprel, subj_mask, obj_mask, relation, edge_index)]
+            if data[9]:
+                tokens = d[2]
+                tokens = ['<ROOT>'] + tokens
+                # anonymize tokens
+                ss, se = d[3][0], d[3][-1]
+                os, oe = d[4][0], d[4][-1]
+                tokens[ss:se+1] = ['SUBJ'] * (se-ss+1)
+                tokens[os:oe+1] = ['OBJ'] * (oe-os+1)
+                tokens = map_to_ids(tokens, vocab.word2id)
+                deprel = map_to_ids(d[8], constant.DEPREL_TO_ID)
+                edge_index = d[7]
+                l = len(tokens)
+                subj_positions = get_positions(ss, se, l)
+                obj_positions = get_positions(os, oe, l)
+                relation = 0 if d[1] == 'not_causal' else 1
+                processed += [(tokens, deprel, subj_positions, obj_positions, relation, edge_index)]
         return processed
 
     def gold(self):
@@ -99,6 +94,11 @@ class BatchLoader(object):
 def map_to_ids(tokens, vocab):
     ids = [vocab[t] if t in vocab else constant.UNK_ID for t in tokens]
     return ids
+
+def get_positions(start_idx, end_idx, length):
+    """ Get subj/obj position sequence. """
+    return list(range(-start_idx, 0)) + [0]*(end_idx - start_idx + 1) + \
+            list(range(1, length-end_idx))
 
 def get_long_tensor(tokens_list):
     """ Convert list of list of tokens to a padded LongTensor. """
