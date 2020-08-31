@@ -120,7 +120,7 @@ class SynGCN(nn.Module):
             self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['attn_dim'])
             self.gcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
 
-            self.entity_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
+        self.entity_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
 
         self.linear = nn.Linear(4*opt['hidden_dim'], opt['num_class'])
 
