@@ -190,11 +190,11 @@ class SynGCN(nn.Module):
         outputs = self.drop(outputs)
 
         if self.opt['gcn']:
-            deprel = self.deprel_emb(deprel)
-            weights = self.attn(deprel, d_masks, outputs[:,0,:]).view(-1)
-            weights = weights[weights.nonzero()].squeeze(1)
+            # deprel = self.deprel_emb(deprel)
+            # weights = self.attn(deprel, d_masks, outputs[:,0,:]).view(-1)
+            # weights = weights[weights.nonzero()].squeeze(1)
             outputs = outputs.reshape(s_len*batch_size, -1)
-            outputs = self.gcn(outputs, edge_index, weights)
+            outputs = self.gcn(outputs, edge_index)#, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
             subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
