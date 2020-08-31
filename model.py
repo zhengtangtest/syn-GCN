@@ -121,8 +121,8 @@ class SynGCN(nn.Module):
             self.gcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
 
             self.entity_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
-            self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
-        self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
+
+        self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
 
         self.opt = opt
         self.topn = self.opt.get('topn', 1e10)
