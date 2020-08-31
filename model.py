@@ -206,6 +206,7 @@ class SynGCN(nn.Module):
             # final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
             final_hidden = outputs[:,0,:]
         else:
+            print (outputs.size(), subj_mask.size())
             subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
             obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
 
