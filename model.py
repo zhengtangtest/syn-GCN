@@ -115,7 +115,7 @@ class SynGCN(nn.Module):
                 dropout=opt['dropout'], bidirectional=True)
 
         if opt['attn']:
-            self.attn_layer = layers.PositionAwareAttention(2*opt['hidden_dim'],
+            self.attn_layer = PositionAwareAttention(2*opt['hidden_dim'],
                     2*opt['hidden_dim'], 2*opt['pe_dim'], opt['attn_dim'])
             self.pe_emb = nn.Embedding(constant.MAX_LEN * 2 + 1, opt['pe_dim'])
 
