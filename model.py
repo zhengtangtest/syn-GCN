@@ -184,8 +184,10 @@ class SynGCN(nn.Module):
         outputs, (ht, ct) = self.rnn(inputs, (h0, c0))
         outputs, output_lens = nn.utils.rnn.pad_packed_sequence(outputs, batch_first=True)
         # hidden = self.drop(ht[-1,:,:]) # get the outmost layer h_n
-        outputs = self.drop(outputs)
 
+        outputs = self.drop(outputs)
+        hidden = outputs[:,0,:]
+        
         # attention
         if self.opt['attn']:
             # convert all negative PE numbers to positive indices
