@@ -120,7 +120,7 @@ class SynGCN(nn.Module):
             self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['attn_dim'])
             self.gcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
 
-        self.entity_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
+        self.entity_attn = Attention(2*opt['hidden_dim'], 2*opt['hidden_dim'], opt['hidden_dim'])
 
         self.linear = nn.Linear(4*opt['hidden_dim'], opt['num_class'])
 
@@ -206,7 +206,6 @@ class SynGCN(nn.Module):
             # final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
             final_hidden = outputs[:,0,:]
         else:
-            print (outputs.size(), subj_mask.size())
             subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
             obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
 
