@@ -33,6 +33,8 @@ DEPREL_TO_ID = {PAD_TOKEN: 0, UNK_TOKEN: 1, 'punct': 2, 'compound': 3, 'case': 4
 
 LABEL_TO_ID = {'not_causal': 0, 'causal': 1}
 
+GOLD_TO_ID = {True:1, False:0}
+
 INFINITY_NUMBER = 1e12
 
-KEYS = ['words', 'mask', 'deprel', 'd_mask', 'subj_mask', 'obj_mask', 'edge_index']
+KEYS = ['words', 'mask', 'deprel', 'd_mask', 'subj_mask', 'obj_mask', 'edge_index', 'rule']

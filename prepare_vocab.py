@@ -42,6 +42,10 @@ def main():
     dev_tokens = load_tokens(dev_file)
     test_tokens = load_tokens(test_file)
 
+    train_rules = load_rules(train_file)
+    dev_rules = load_rules(dev_file)
+    test_rules = load_rules(test_file)
+
     # load glove
     print("loading glove...")
     glove_vocab = vocab.load_glove_vocab(wv_file, wv_dim)
@@ -49,6 +53,7 @@ def main():
     
     print("building vocab...")
     v = build_vocab(train_tokens, glove_vocab, args.min_freq)
+    r = build_rule_vocab(train_rules)
 
     print("calculating oov...")
     datasets = {'train': train_tokens, 'dev': dev_tokens, 'test': test_tokens}
@@ -60,9 +65,8 @@ def main():
     embedding = vocab.build_embedding(wv_file, v, wv_dim)
     print("embedding size: {} x {}".format(*embedding.shape))
 
-    print("dumping to files...")
     with open(vocab_file, 'wb') as outfile:
-        pickle.dump(v, outfile)
+        pickle.dump((v, r), outfile)
     np.save(emb_file, embedding)
     print("all done.")
 
@@ -73,6 +77,15 @@ def load_tokens(filename):
         for d in data:
             tokens += d[2]
     print("{} tokens from {} examples loaded from {}.".format(len(tokens), len(data), filename))
+    return tokens
+
+def load_rules(filename):
+    with open(filename) as infile:
+        data = json.load(infile)
+        tokens = []
+        for d in data:
+            tokens += d[6]
+    print("{} rule tokens from {} examples loaded from {}.".format(len(tokens), len(data), filename))
     return tokens
 
 def build_vocab(tokens, glove_vocab, min_freq):
@@ -86,6 +99,12 @@ def build_vocab(tokens, glove_vocab, min_freq):
     # add special tokens and entity mask tokens
     v = constant.VOCAB_PREFIX + ['SUBJ', 'OBJ'] + v
     print("vocab built with {}/{} words.".format(len(v), len(counter)))
+    return v
+
+def build_rule_vocab(tokens):
+    counter = Counter(t for t in tokens)
+    v = sorted([t for t in counter], key=counter.get, reverse=True)
+    print("rule vocab built with {}/{} tokens.".format(len(v), len(counter)))
     return v
 
 def count_oov(tokens, vocab):
