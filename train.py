@@ -30,19 +30,16 @@ parser.add_argument('--no-lower', dest='lower', action='store_false')
 parser.set_defaults(lower=False)
 
 parser.add_argument('--sgcn', dest='sgcn', action='store_true', help='Use attention layer.')
-parser.add_argument('--no-sgcn', dest='sgcn', action='store_false')
 parser.set_defaults(sgcn=False)
 parser.add_argument('--d_attn_dim', type=int, default=20, help='Attention size.')
 parser.add_argument('--deprel_dim', type=int, default=30, help='Deprel embedding dimension.')
 
 parser.add_argument('--pattn', dest='pattn', action='store_true', help='Use attention layer.')
-parser.add_argument('--no-pattn', dest='pattn', action='store_false')
 parser.set_defaults(pattn=False)
 parser.add_argument('--attn_dim', type=int, default=200, help='Attention size.')
 parser.add_argument('--pe_dim', type=int, default=30, help='Position encoding dimension.')
 
 parser.add_argument('--rgcn', dest='rgcn', action='store_true', help='Use attention layer.')
-parser.add_argument('--no-rgcn', dest='rgcn', action='store_false')
 parser.set_defaults(rgcn=False)
 
 parser.add_argument('--lr', type=float, default=1.0, help='Applies to SGD and Adagrad.')
@@ -117,6 +114,7 @@ max_steps = len(train_batch) * opt['num_epoch']
 # start training
 for epoch in range(1, opt['num_epoch']+1):
     train_loss = 0
+    epoch_start_time = time.time()
     for batch in train_batch.data:
         start_time = time.time()
         global_step += 1
@@ -140,8 +138,9 @@ for epoch in range(1, opt['num_epoch']+1):
     
     train_loss = train_loss / train_batch.num_examples * opt['batch_size'] # avg loss per batch
     dev_loss = dev_loss / dev_batch.num_examples * opt['batch_size']
-    print("epoch {}: train_loss = {:.6f}, dev_loss = {:.6f}, dev_f1 = {:.4f}".format(epoch,\
-            train_loss, dev_loss, dev_f1))
+    epoch_duration = time.time() - epoch_start_time
+    print("epoch {}: train_loss = {:.6f}, dev_loss = {:.6f}, dev_f1 = {:.4f}, time = {:.3f} sec".format(epoch,\
+            train_loss, dev_loss, dev_f1, epoch_duration))
     file_logger.log("{}\t{:.6f}\t{:.6f}\t{:.4f}".format(epoch, train_loss, dev_loss, dev_f1))
 
     # save
