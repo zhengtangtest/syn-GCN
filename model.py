@@ -33,7 +33,6 @@ class RelationModel(object):
             labels = batch.rel.cuda()
         else:
             for b in constant.KEYS:
-                print (b, batch[b].size())
                 inputs += [batch[b]]
             labels = batch.rel
         batch_size = labels.size(0)
@@ -157,8 +156,9 @@ class SynGCN(nn.Module):
             return h0, c0
     
     def forward(self, inputs, batch_size):
-        for i in range(len(inputs)-1):
-            inputs[i] = inputs[i].view(batch_size, -1)
+        for i in range(len(inputs)):
+            if i != 6:
+                inputs[i] = inputs[i].view(batch_size, -1)
         words, masks, deprel, d_masks, subj_mask, obj_mask, edge_index, rules = inputs # unpack
         s_len = words.size(1)
         seq_lens = list(masks.data.eq(constant.PAD_ID).long().sum(1).squeeze())
@@ -181,7 +181,7 @@ class SynGCN(nn.Module):
             weights = self.attn(deprel, d_masks, outputs[:,0,:]).view(-1)
             weights = weights[weights.nonzero()].squeeze(1)
             outputs = outputs.reshape(s_len*batch_size, -1)
-            outputs = self.gcn(outputs, edge_index, weights)
+            outputs = self.gcn(outputs, edge_index)#, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
             subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])

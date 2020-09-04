@@ -149,9 +149,10 @@ class PositionAwareRNN(nn.Module):
             return h0, c0
     
     def forward(self, inputs, batch_size):
-        for i in range(len(inputs)-1):
-            inputs[i] = inputs[i].view(batch_size, -1)
-        words, masks, deprel, d_masks, subj_pos, obj_pos, edge_index = inputs # unpack
+        for i in range(len(inputs)):
+            if i != 6:
+                inputs[i] = inputs[i].view(batch_size, -1)
+        words, masks, deprel, d_masks, subj_pos, obj_pos, edge_index, rule = inputs # unpack
         seq_lens = list(masks.data.eq(constant.PAD_ID).long().sum(1).squeeze())
         # embedding lookup
         word_inputs = self.emb(words)
