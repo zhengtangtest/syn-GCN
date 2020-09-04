@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 from utils import constant, torch_utils
 
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCNConv, RGCNConv
 
 class RelationModel(object):
     """ A wrapper class for the training and evaluation of models. """
@@ -114,10 +114,22 @@ class SynGCN(nn.Module):
         self.rnn = nn.LSTM(input_size, opt['hidden_dim'], opt['num_layers'], batch_first=True,\
                 dropout=opt['dropout'], bidirectional=True)
 
-        if opt['attn']:
+        if opt['sgcn']:
+            self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
+                    padding_idx=constant.PAD_ID)
+            self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['d_attn_dim'])
+            self.sgcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
+
+            self.entity_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
+
+        if opt['pattn']:
             self.attn_layer = PositionAwareAttention(2*opt['hidden_dim'],
                     2*opt['hidden_dim'], 2*opt['pe_dim'], opt['attn_dim'])
             self.pe_emb = nn.Embedding(constant.MAX_LEN * 2 + 1, opt['pe_dim'])
+
+        if opt['rgcn']:
+            self.rgcn = RGCNConv(2*opt['hidden_dim'], opt['hidden_dim'], len(constant.DEPREL_TO_ID)-1, num_bases=len(constant.DEPREL_TO_ID)-1)
+            self.entity_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
 
         self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
 
@@ -137,7 +149,9 @@ class SynGCN(nn.Module):
             self.pos_emb.weight.data[1:,:].uniform_(-1.0, 1.0)
         if self.opt['ner_dim'] > 0:
             self.ner_emb.weight.data[1:,:].uniform_(-1.0, 1.0)
-        if self.opt['attn']:
+        if self.opt['sgcn'] and self.opt['deprel_dim'] > 0:
+            self.deprel_emb.weight.data[1:,:].uniform_(-1.0, 1.0)
+        if self.opt['pattn']:
             self.pe_emb.weight.data.uniform_(-1.0, 1.0)
 
         self.linear.bias.data.fill_(0)
@@ -165,7 +179,7 @@ class SynGCN(nn.Module):
     def forward(self, inputs, batch_size):
         for i in range(len(inputs)-1):
             inputs[i] = inputs[i].view(batch_size, -1)
-        words, masks, pos, ner, deprel, d_masks, subj_pos, obj_pos, edge_index = inputs # unpack
+        words, masks, pos, ner, deprel, d_masks, subj_mask, obj_mask, edge_index = inputs # unpack
         s_len = words.size(1)
         seq_lens = list(masks.data.eq(constant.PAD_ID).long().sum(1).squeeze())
         # embedding lookup
@@ -184,20 +198,49 @@ class SynGCN(nn.Module):
         outputs, (ht, ct) = self.rnn(inputs, (h0, c0))
         outputs, output_lens = nn.utils.rnn.pad_packed_sequence(outputs, batch_first=True)
         # hidden = self.drop(ht[-1,:,:]) # get the outmost layer h_n
-
         outputs = self.drop(outputs)
-        hidden = outputs[:,0,:]
+
+        if self.opt['sgcn']:
+            deprel = self.deprel_emb(deprel)
+            weights = self.attn(deprel, d_masks, outputs[:,0,:]).view(-1)
+            weights = weights[weights.nonzero()].squeeze(1)
+            outputs = outputs.reshape(s_len*batch_size, -1)
+            outputs = self.sgcn(outputs, edge_index, weights)
+            outputs = outputs.reshape(batch_size, s_len, -1)
+
+            subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
+            obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
+
+            subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+            obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+
+            final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
         
-        # attention
-        if self.opt['attn']:
+        elif self.opt['pattn']:
             # convert all negative PE numbers to positive indices
             # e.g., -2 -1 0 1 will be mapped to 98 99 100 101
             subj_pe_inputs = self.pe_emb(subj_pos + constant.MAX_LEN)
             obj_pe_inputs = self.pe_emb(obj_pos + constant.MAX_LEN)
             pe_features = torch.cat((subj_pe_inputs, obj_pe_inputs), dim=2)
             final_hidden = self.attn_layer(outputs, masks, hidden, pe_features)
+
+        elif self.opt['rgcn']:
+            outputs = outputs.reshape(s_len*batch_size, -1)
+            deprel  = deprel.reshape(-1)
+            deprel  = (deprel[deprel.nonzero()] - 1).reshape(-1)
+            outputs = self.rgcn(outputs, edge_index, deprel)
+            outputs = outputs.reshape(batch_size, s_len, -1)
+
+            subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
+            obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
+
+            subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+            obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+
+            final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
+
         else:
-            final_hidden = hidden
+            final_hidden = outputs[:,0,:]
 
         logits = self.linear(final_hidden)
         return logits, final_hidden
@@ -244,62 +287,3 @@ class Attention(nn.Module):
         weights = F.softmax(scores, dim=1)
 
         return weights
-
-class PositionAwareAttention(nn.Module):
-    """
-    A position-augmented attention layer where the attention weight is
-    a = T' . tanh(Ux + Vq + Wf)
-    where x is the input, q is the query, and f is additional position features.
-    """
-    
-    def __init__(self, input_size, query_size, feature_size, attn_size):
-        super(PositionAwareAttention, self).__init__()
-        self.input_size = input_size
-        self.query_size = query_size
-        self.feature_size = feature_size
-        self.attn_size = attn_size
-        self.ulinear = nn.Linear(input_size, attn_size)
-        self.vlinear = nn.Linear(query_size, attn_size, bias=False)
-        if feature_size > 0:
-            self.wlinear = nn.Linear(feature_size, attn_size, bias=False)
-        else:
-            self.wlinear = None
-        self.tlinear = nn.Linear(attn_size, 1)
-        self.init_weights()
-
-    def init_weights(self):
-        self.ulinear.weight.data.normal_(std=0.001)
-        self.vlinear.weight.data.normal_(std=0.001)
-        if self.wlinear is not None:
-            self.wlinear.weight.data.normal_(std=0.001)
-        self.tlinear.weight.data.zero_() # use zero to give uniform attention at the beginning
-    
-    def forward(self, x, x_mask, q, f):
-        """
-        x : batch_size * seq_len * input_size
-        q : batch_size * query_size
-        f : batch_size * seq_len * feature_size
-        """
-        batch_size, seq_len, _ = x.size()
-
-        x_proj = self.ulinear(x.contiguous().view(-1, self.input_size)).view(
-            batch_size, seq_len, self.attn_size)
-        q_proj = self.vlinear(q.view(-1, self.query_size)).contiguous().view(
-            batch_size, self.attn_size).unsqueeze(1).expand(
-                batch_size, seq_len, self.attn_size)
-        if self.wlinear is not None:
-            f_proj = self.wlinear(f.view(-1, self.feature_size)).contiguous().view(
-                batch_size, seq_len, self.attn_size)
-            projs = [x_proj, q_proj, f_proj]
-        else:
-            projs = [x_proj, q_proj]
-        scores = self.tlinear(torch.tanh(sum(projs)).view(-1, self.attn_size)).view(
-            batch_size, seq_len)
-
-        # mask padding
-        scores.data.masked_fill_(x_mask.data, -float('inf'))
-        weights = F.softmax(scores, dim=1)
-        # weighted average input vectors
-        outputs = weights.unsqueeze(1).bmm(x).squeeze(1)
-        return outputs
-    

@@ -29,11 +29,21 @@ parser.add_argument('--lower', dest='lower', action='store_true', help='Lowercas
 parser.add_argument('--no-lower', dest='lower', action='store_false')
 parser.set_defaults(lower=False)
 
-parser.add_argument('--attn', dest='attn', action='store_true', help='Use attention layer.')
-parser.add_argument('--no-attn', dest='attn', action='store_false')
-parser.set_defaults(attn=True)
+parser.add_argument('--sgcn', dest='sgcn', action='store_true', help='Use attention layer.')
+parser.add_argument('--no-sgcn', dest='sgcn', action='store_false')
+parser.set_defaults(sgcn=False)
+parser.add_argument('--d_attn_dim', type=int, default=20, help='Attention size.')
+parser.add_argument('--deprel_dim', type=int, default=30, help='Deprel embedding dimension.')
+
+parser.add_argument('--pattn', dest='pattn', action='store_true', help='Use attention layer.')
+parser.add_argument('--no-pattn', dest='pattn', action='store_false')
+parser.set_defaults(pattn=False)
 parser.add_argument('--attn_dim', type=int, default=200, help='Attention size.')
 parser.add_argument('--pe_dim', type=int, default=30, help='Position encoding dimension.')
+
+parser.add_argument('--rgcn', dest='rgcn', action='store_true', help='Use attention layer.')
+parser.add_argument('--no-rgcn', dest='rgcn', action='store_false')
+parser.set_defaults(rgcn=False)
 
 parser.add_argument('--lr', type=float, default=1.0, help='Applies to SGD and Adagrad.')
 parser.add_argument('--lr_decay', type=float, default=0.9)
