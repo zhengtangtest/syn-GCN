@@ -182,9 +182,9 @@ class SynGCN(nn.Module):
             return h0, c0
     
     def forward(self, inputs, batch_size):
-        for i in range(len(inputs)-1):
+        for i in range(len(inputs)-2):
             inputs[i] = inputs[i].view(batch_size, -1)
-        words, masks, pos, ner, deprel, d_masks, subj_mask, obj_mask, edge_index = inputs # unpack
+        words, masks, pos, ner, deprel, d_masks, subj_mask, obj_mask, edge_index, edge_index_rev = inputs # unpack
         s_len = words.size(1)
         seq_lens = list(masks.data.eq(constant.PAD_ID).long().sum(1).squeeze())
         # embedding lookup
