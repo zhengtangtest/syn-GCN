@@ -79,7 +79,7 @@ class BatchLoader(object):
             pos = map_to_ids(['<ROOT>']+d['stanford_pos'], constant.POS_TO_ID)
             ner = map_to_ids(['<ROOT>']+d['stanford_ner'], constant.NER_TO_ID)
             deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
-            edge_index = [d['stanford_head'], list(range(1, len(d['stanford_head'])+1))]
+            edge_index = [list(range(1, len(d['stanford_head'])+1)), d['stanford_head']]
             l = len(tokens)
             relation = constant.LABEL_TO_ID[d['relation']]
             if opt['pattn']:
