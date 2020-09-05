@@ -115,7 +115,7 @@ class SynGCN(nn.Module):
                 dropout=opt['dropout'], bidirectional=True)
 
         if opt['sgcn']:
-            self.deprel_emb = nn.Embedding(len(constant.DEPREL_bi_TO_ID), opt['deprel_dim'],
+            self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
             self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['d_attn_dim'])
             self.sgcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
@@ -129,7 +129,7 @@ class SynGCN(nn.Module):
             self.pe_emb = nn.Embedding(constant.MAX_LEN * 2 + 1, opt['pe_dim'])
 
         if opt['rgcn']:
-            self.rgcn = RGCNConv(2*opt['hidden_dim'], opt['hidden_dim'], len(constant.DEPREL_bi_TO_ID)-1, num_bases=len(constant.DEPREL_TO_ID)-1)
+            self.rgcn = RGCNConv(2*opt['hidden_dim'], opt['hidden_dim'], len(constant.DEPREL_TO_ID)-1, num_bases=len(constant.DEPREL_TO_ID)-1)
 
         self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
 
