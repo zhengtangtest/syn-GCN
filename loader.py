@@ -78,16 +78,17 @@ class BatchLoader(object):
             tokens = map_to_ids(tokens, vocab.word2id)
             pos = map_to_ids(['<ROOT>']+d['stanford_pos'], constant.POS_TO_ID)
             ner = map_to_ids(['<ROOT>']+d['stanford_ner'], constant.NER_TO_ID)
-            deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
-            edge_index = [d['stanford_head'], list(range(1, len(d['stanford_head'])+1))]
+            edge_index = [d['stanford_head'], list(range(1, len(d['stanford_head'])+1))] + [list(range(1, len(d['stanford_head'])+1)), d['stanford_head']]
             l = len(tokens)
             relation = constant.LABEL_TO_ID[d['relation']]
-            
             if opt['pattn']:
+                deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
                 subj_positions = get_positions(d['subj_start'], d['subj_end'], l)
                 obj_positions = get_positions(d['obj_start'], d['obj_end'], l)
                 processed += [(tokens, pos, ner, deprel, subj_positions, obj_positions, relation, edge_index)]
             else:
+                dep = [i+'_in' for i in d['stanford_deprel']] + [i+'_out' for i in d['stanford_deprel']] 
+                deprel = map_to_ids(dep, constant.DEPREL_bi_TO_ID)
                 subj_mask = [1 if i in range(ss, se+1) else 0 for i in range(len(tokens))]
                 obj_mask = [1 if i in range(os, oe+1) else 0 for i in range(len(tokens))]
                 processed += [(tokens, pos, ner, deprel, subj_mask, obj_mask, relation, edge_index)]
