@@ -218,6 +218,7 @@ class SynGCN(nn.Module):
             outputs_0 = outputs_0.reshape(batch_size, s_len, -1)
 
             outputs = torch.cat([outputs_0, outputs_rev], dim=2)
+            outputs = self.linear2(outputs)
 
             if self.opt['e_attn']:
                 subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
