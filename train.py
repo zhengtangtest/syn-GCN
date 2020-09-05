@@ -34,6 +34,9 @@ parser.set_defaults(sgcn=False)
 parser.add_argument('--d_attn_dim', type=int, default=20, help='Attention size.')
 parser.add_argument('--deprel_dim', type=int, default=30, help='Deprel embedding dimension.')
 
+parser.add_argument('--e_attn', dest='e_attn', action='store_true', help='Use attention layer.')
+parser.set_defaults(sgcn=False)
+
 parser.add_argument('--pattn', dest='pattn', action='store_true', help='Use attention layer.')
 parser.set_defaults(pattn=False)
 parser.add_argument('--attn_dim', type=int, default=200, help='Attention size.')

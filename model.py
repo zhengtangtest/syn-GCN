@@ -119,7 +119,8 @@ class SynGCN(nn.Module):
                     padding_idx=constant.PAD_ID)
             self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['d_attn_dim'])
             self.sgcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
-
+        
+        if opt['e_attn']:
             self.entity_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
 
         if opt['pattn']:
@@ -129,7 +130,6 @@ class SynGCN(nn.Module):
 
         if opt['rgcn']:
             self.rgcn = RGCNConv(2*opt['hidden_dim'], opt['hidden_dim'], len(constant.DEPREL_bi_TO_ID)-1, num_bases=len(constant.DEPREL_TO_ID)-1)
-            self.entity_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
 
         self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
 
@@ -208,8 +208,13 @@ class SynGCN(nn.Module):
             outputs = self.sgcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
-            subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
-            obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
+            if self.opt['e_attn']:
+                subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
+                obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
+            else:
+                # Average
+                subj_weights = ((~subj_mask).float())/(~subj_mask).float().sum(-1).view(-1, 1)
+                obj_weights = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
 
             subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
             obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
@@ -231,8 +236,13 @@ class SynGCN(nn.Module):
             outputs = self.rgcn(outputs, edge_index, deprel)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
-            subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
-            obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
+            if self.opt['e_attn']:
+                subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
+                obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
+            else:
+                # Average
+                subj_weights = ((~subj_mask).float())/(~subj_mask).float().sum(-1).view(-1, 1)
+                obj_weights = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
 
             subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
             obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
