@@ -118,7 +118,9 @@ class SynGCN(nn.Module):
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
             self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['d_attn_dim'])
+            self.attn_rev = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['d_attn_dim'])
             self.sgcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
+            self.linear2 = nn.Linear(2*opt['hidden_dim'], opt['hidden_dim'])
         
         if opt['e_attn']:
             self.entity_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
@@ -156,6 +158,9 @@ class SynGCN(nn.Module):
 
         self.linear.bias.data.fill_(0)
         init.xavier_uniform_(self.linear.weight, gain=1) # initialize linear layer
+
+        self.linear2.bias.data.fill_(0)
+        init.xavier_uniform_(self.linear2.weight, gain=1) # initialize linear layer
 
         # decide finetuning
         if self.topn <= 0:
@@ -204,9 +209,15 @@ class SynGCN(nn.Module):
             deprel = self.deprel_emb(deprel)
             weights = self.attn(deprel, d_masks, outputs[:,0,:]).view(-1)
             weights = weights[weights.nonzero()].squeeze(1)
+            weights_rev = self.attn(deprel, d_masks, outputs[:,0,:]).view(-1)
+            weights_rev = weights_rev[weights_rev.nonzero()].squeeze(1)
             outputs = outputs.reshape(s_len*batch_size, -1)
-            outputs = self.sgcn(outputs, edge_index, weights)
-            outputs = outputs.reshape(batch_size, s_len, -1)
+            outputs_rev = self.sgcn(outputs, edge_index_rev, weights_rev)
+            outputs_rev = outputs_rev.reshape(batch_size, s_len, -1)
+            outputs_0 = self.sgcn(outputs, edge_index, weights)
+            outputs_0 = outputs_0.reshape(batch_size, s_len, -1)
+
+            outputs = torch.cat([outputs_0, outputs_rev], dim=2)
 
             if self.opt['e_attn']:
                 subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
