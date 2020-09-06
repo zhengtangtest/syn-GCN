@@ -281,6 +281,24 @@ class SynGCN(nn.Module):
 
             else:
                 final_hidden = outputs[:,0,:]
+        else:
+            if self.opt['ee']
+                if self.opt['e_attn']:
+                    subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
+                    obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
+                else:
+                    # Average
+                    subj_weights = ((~subj_mask).float())/(~subj_mask).float().sum(-1).view(-1, 1)
+                    obj_weights = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
+
+                subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+                obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+
+                final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
+
+            else:
+                final_hidden = outputs[:,0,:]
+
 
         logits = self.linear(final_hidden)
         return logits, final_hidden
