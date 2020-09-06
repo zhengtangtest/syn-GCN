@@ -115,6 +115,8 @@ format_str = '{}: step {}/{} (epoch {}/{}), loss = {:.6f} ({:.3f} sec/batch), lr
 max_steps = len(train_batch) * opt['num_epoch']
 
 # start training
+best_loss = 0
+wait = 0
 for epoch in range(1, opt['num_epoch']+1):
     train_loss = 0
     epoch_start_time = time.time()
@@ -141,6 +143,14 @@ for epoch in range(1, opt['num_epoch']+1):
     
     train_loss = train_loss / train_batch.num_examples * opt['batch_size'] # avg loss per batch
     dev_loss = dev_loss / dev_batch.num_examples * opt['batch_size']
+    # Early Stopping, patience = 5
+    if best_loss < dev_loss:
+        if wait > 5:
+            break
+        else:
+            wait += 1
+    else:
+        best_loss = dev_loss
     epoch_duration = time.time() - epoch_start_time
     print("epoch {}: train_loss = {:.6f}, dev_loss = {:.6f}, dev_f1 = {:.4f}, time = {:.3f} sec".format(epoch,\
             train_loss, dev_loss, dev_f1, epoch_duration))
