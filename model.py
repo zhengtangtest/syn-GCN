@@ -211,7 +211,7 @@ class SynGCN(nn.Module):
             outputs = self.sgcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
-            if self.opt['ee']
+            if self.opt['ee']:
                 if self.opt['e_attn']:
                     subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
                     obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
@@ -233,7 +233,7 @@ class SynGCN(nn.Module):
             outputs = self.gcn(outputs, edge_index)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
-            if self.opt['ee']
+            if self.opt['ee']:
                 if self.opt['e_attn']:
                     subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
                     obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
@@ -265,7 +265,7 @@ class SynGCN(nn.Module):
             outputs = self.rgcn(outputs, edge_index, deprel)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
-            if self.opt['ee']
+            if self.opt['ee']:
                 if self.opt['e_attn']:
                     subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
                     obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
@@ -282,7 +282,7 @@ class SynGCN(nn.Module):
             else:
                 final_hidden = outputs[:,0,:]
         else:
-            if self.opt['ee']
+            if self.opt['ee']:
                 if self.opt['e_attn']:
                     subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
                     obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
