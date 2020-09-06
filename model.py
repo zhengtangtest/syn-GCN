@@ -134,10 +134,16 @@ class SynGCN(nn.Module):
         if opt['gcn']:
             self.gcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
 
-        if opt['ee']:
-            self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
+        if opt['gcn'] or opt['sgcn'] or opt['rgcn']:
+            if opt['ee']:
+                self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
+            else:
+                self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
         else:
-            self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
+            if opt['ee']:
+                self.linear = nn.Linear(4*opt['hidden_dim'], opt['num_class'])
+            else:
+                self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
 
         self.opt = opt
         self.topn = self.opt.get('topn', 1e10)
