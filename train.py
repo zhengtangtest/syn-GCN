@@ -29,21 +29,28 @@ parser.add_argument('--lower', dest='lower', action='store_true', help='Lowercas
 parser.add_argument('--no-lower', dest='lower', action='store_false')
 parser.set_defaults(lower=False)
 
-parser.add_argument('--sgcn', dest='sgcn', action='store_true', help='Use attention layer.')
+parser.add_argument('--gcn', dest='gcn', action='store_true', help='Vanilla GCN.')
+parser.set_defaults(gcn=False)
+
+parser.add_argument('--sgcn', dest='sgcn', action='store_true', help='Syn-GCN.')
 parser.set_defaults(sgcn=False)
 parser.add_argument('--d_attn_dim', type=int, default=20, help='Attention size.')
 parser.add_argument('--deprel_dim', type=int, default=30, help='Deprel embedding dimension.')
 
-parser.add_argument('--e_attn', dest='e_attn', action='store_true', help='Use attention layer.')
+parser.add_argument('--rgcn', dest='rgcn', action='store_true', help='R-GCN.')
+parser.set_defaults(rgcn=False)
+
+parser.add_argument('--e_attn', dest='e_attn', action='store_true', help='Entity Attention.')
 parser.set_defaults(sgcn=False)
+
+parser.add_argument('--ee', dest='ee', action='store_true', help='Encode Entity')
+parser.set_defaults(ee=False)
 
 parser.add_argument('--pattn', dest='pattn', action='store_true', help='Use attention layer.')
 parser.set_defaults(pattn=False)
 parser.add_argument('--attn_dim', type=int, default=200, help='Attention size.')
 parser.add_argument('--pe_dim', type=int, default=30, help='Position encoding dimension.')
 
-parser.add_argument('--rgcn', dest='rgcn', action='store_true', help='Use attention layer.')
-parser.set_defaults(rgcn=False)
 
 parser.add_argument('--lr', type=float, default=1.0, help='Applies to SGD and Adagrad.')
 parser.add_argument('--lr_decay', type=float, default=0.9)

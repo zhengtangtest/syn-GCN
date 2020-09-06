@@ -118,9 +118,7 @@ class SynGCN(nn.Module):
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
             self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['d_attn_dim'])
-            self.attn_rev = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['d_attn_dim'])
             self.sgcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
-            self.linear2 = nn.Linear(2*opt['hidden_dim'], opt['hidden_dim'])
         
         if opt['e_attn']:
             self.entity_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
@@ -132,6 +130,9 @@ class SynGCN(nn.Module):
 
         if opt['rgcn']:
             self.rgcn = RGCNConv(2*opt['hidden_dim'], opt['hidden_dim'], len(constant.DEPREL_TO_ID)-1, num_bases=len(constant.DEPREL_TO_ID)-1)
+
+        if opt['gcn']:
+            self.gcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
 
         self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
 
@@ -159,9 +160,6 @@ class SynGCN(nn.Module):
         self.linear.bias.data.fill_(0)
         init.xavier_uniform_(self.linear.weight, gain=1) # initialize linear layer
 
-        self.linear2.bias.data.fill_(0)
-        init.xavier_uniform_(self.linear2.weight, gain=1) # initialize linear layer
-
         # decide finetuning
         if self.topn <= 0:
             print("Do not finetune word embedding layer.")
@@ -182,9 +180,9 @@ class SynGCN(nn.Module):
             return h0, c0
     
     def forward(self, inputs, batch_size):
-        for i in range(len(inputs)-2):
+        for i in range(len(inputs)-1):
             inputs[i] = inputs[i].view(batch_size, -1)
-        words, masks, pos, ner, deprel, d_masks, subj_mask, obj_mask, edge_index, edge_index_rev = inputs # unpack
+        words, masks, pos, ner, deprel, d_masks, subj_mask, obj_mask, edge_index = inputs # unpack
         s_len = words.size(1)
         seq_lens = list(masks.data.eq(constant.PAD_ID).long().sum(1).squeeze())
         # embedding lookup
@@ -209,29 +207,48 @@ class SynGCN(nn.Module):
             deprel = self.deprel_emb(deprel)
             weights = self.attn(deprel, d_masks, outputs[:,0,:]).view(-1)
             weights = weights[weights.nonzero()].squeeze(1)
-            weights_rev = self.attn(deprel, d_masks, outputs[:,0,:]).view(-1)
-            weights_rev = weights_rev[weights_rev.nonzero()].squeeze(1)
             outputs = outputs.reshape(s_len*batch_size, -1)
-            outputs_rev = self.sgcn(outputs, edge_index_rev, weights_rev)
-            outputs_rev = outputs_rev.reshape(batch_size, s_len, -1)
-            outputs_0 = self.sgcn(outputs, edge_index, weights)
-            outputs_0 = outputs_0.reshape(batch_size, s_len, -1)
+            outputs = self.sgcn(outputs, edge_index, weights)
+            outputs = outputs.reshape(batch_size, s_len, -1)
 
-            outputs = torch.cat([outputs_0, outputs_rev], dim=2)
-            outputs = self.linear2(outputs)
+            if self.opt['ee']
+                if self.opt['e_attn']:
+                    subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
+                    obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
+                else:
+                    # Average
+                    subj_weights = ((~subj_mask).float())/(~subj_mask).float().sum(-1).view(-1, 1)
+                    obj_weights = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
 
-            if self.opt['e_attn']:
-                subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
-                obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
+                subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+                obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+
+                final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
+
             else:
-                # Average
-                subj_weights = ((~subj_mask).float())/(~subj_mask).float().sum(-1).view(-1, 1)
-                obj_weights = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
+                final_hidden = outputs[:,0,:]
 
-            subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
-            obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+        elif self.opt['gcn']:
+            outputs = outputs.reshape(s_len*batch_size, -1)
+            outputs = self.gcn(outputs, edge_index)
+            outputs = outputs.reshape(batch_size, s_len, -1)
 
-            final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
+            if self.opt['ee']
+                if self.opt['e_attn']:
+                    subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
+                    obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
+                else:
+                    # Average
+                    subj_weights = ((~subj_mask).float())/(~subj_mask).float().sum(-1).view(-1, 1)
+                    obj_weights = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
+
+                subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+                obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+
+                final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
+
+            else:
+                final_hidden = outputs[:,0,:]
         
         elif self.opt['pattn']:
             # convert all negative PE numbers to positive indices
@@ -248,21 +265,22 @@ class SynGCN(nn.Module):
             outputs = self.rgcn(outputs, edge_index, deprel)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
-            if self.opt['e_attn']:
-                subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
-                obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
+            if self.opt['ee']
+                if self.opt['e_attn']:
+                    subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
+                    obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
+                else:
+                    # Average
+                    subj_weights = ((~subj_mask).float())/(~subj_mask).float().sum(-1).view(-1, 1)
+                    obj_weights = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
+
+                subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+                obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+
+                final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
+
             else:
-                # Average
-                subj_weights = ((~subj_mask).float())/(~subj_mask).float().sum(-1).view(-1, 1)
-                obj_weights = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
-
-            subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
-            obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
-
-            final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
-
-        else:
-            final_hidden = outputs[:,0,:]
+                final_hidden = outputs[:,0,:]
 
         logits = self.linear(final_hidden)
         return logits, final_hidden
