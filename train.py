@@ -122,7 +122,7 @@ format_str = '{}: step {}/{} (epoch {}/{}), loss = {:.6f} ({:.3f} sec/batch), lr
 max_steps = len(train_batch) * opt['num_epoch']
 
 # start training
-best_loss = 0
+best_loss = float("inf")
 wait = 0
 for epoch in range(1, opt['num_epoch']+1):
     train_loss = 0
@@ -158,6 +158,7 @@ for epoch in range(1, opt['num_epoch']+1):
             wait += 1
     else:
         best_loss = dev_loss
+        wait = 0
     epoch_duration = time.time() - epoch_start_time
     print("epoch {}: train_loss = {:.6f}, dev_loss = {:.6f}, dev_f1 = {:.4f}, time = {:.3f} sec".format(epoch,\
             train_loss, dev_loss, dev_f1, epoch_duration))

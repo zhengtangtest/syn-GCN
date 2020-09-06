@@ -119,9 +119,6 @@ class SynGCN(nn.Module):
                     padding_idx=constant.PAD_ID)
             self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['d_attn_dim'])
             self.sgcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
-        
-        if opt['e_attn']:
-            self.entity_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
 
         if opt['pattn']:
             self.attn_layer = PositionAwareAttention(2*opt['hidden_dim'],
@@ -139,11 +136,15 @@ class SynGCN(nn.Module):
                 self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
             else:
                 self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
+            if opt['e_attn']:
+                self.entity_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
         else:
             if opt['ee']:
                 self.linear = nn.Linear(4*opt['hidden_dim'], opt['num_class'])
             else:
                 self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
+            if opt['e_attn']:
+                self.entity_attn = Attention(2*opt['hidden_dim'], 2*opt['hidden_dim'], 2*opt['hidden_dim'])
 
         self.opt = opt
         self.topn = self.opt.get('topn', 1e10)
