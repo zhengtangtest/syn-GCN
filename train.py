@@ -55,7 +55,7 @@ parser.add_argument('--pe_dim', type=int, default=30, help='Position encoding di
 parser.add_argument('--lr', type=float, default=1.0, help='Applies to SGD and Adagrad.')
 parser.add_argument('--lr_decay', type=float, default=0.9)
 parser.add_argument('--optim', type=str, default='sgd', help='sgd, adagrad, adam or adamax.')
-parser.add_argument('--num_epoch', type=int, default=30)
+parser.add_argument('--num_epoch', type=int, default=100)
 parser.add_argument('--batch_size', type=int, default=64)
 parser.add_argument('--max_grad_norm', type=float, default=5.0, help='Gradient clipping.')
 parser.add_argument('--log_step', type=int, default=20, help='Print log every k steps.')
