@@ -163,6 +163,8 @@ for epoch in range(1, opt['num_epoch']+1):
     if epoch % opt['save_epoch'] != 0:
         os.remove(model_file)
     # Early Stopping, patience = 5
+    if epoch <=30 and best_f1 < dev_f1:
+        best_f1 = dev_f1
     if epoch > 30 and best_f1 > dev_f1:
         if wait > 5:
             break
