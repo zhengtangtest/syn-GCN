@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 from utils import constant, torch_utils
 
-from torch_geometric.nn import GCNConv, RGCNConv
+from torch_geometric.nn import GCNConv, RGCNConv, GATConv
 
 class RelationModel(object):
     """ A wrapper class for the training and evaluation of models. """
@@ -131,7 +131,12 @@ class SynGCN(nn.Module):
         if opt['gcn']:
             self.gcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
 
-        if opt['gcn'] or opt['sgcn'] or opt['rgcn']:
+        if opt['gat']:
+            self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
+                    padding_idx=constant.PAD_ID)
+            self.gat = GATConv(2*opt['hidden_dim']+opt['deprel_dim'], opt['hidden_dim'])
+
+        if opt['gcn'] or opt['sgcn'] or opt['rgcn'] or opt['gat']:
             if opt['ee']:
                 self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
             else:
@@ -162,7 +167,7 @@ class SynGCN(nn.Module):
             self.pos_emb.weight.data[1:,:].uniform_(-1.0, 1.0)
         if self.opt['ner_dim'] > 0:
             self.ner_emb.weight.data[1:,:].uniform_(-1.0, 1.0)
-        if self.opt['sgcn'] and self.opt['deprel_dim'] > 0:
+        if (self.opt['sgcn'] or self.opt['gat']) and self.opt['deprel_dim'] > 0:
             self.deprel_emb.weight.data[1:,:].uniform_(-1.0, 1.0)
         if self.opt['pattn']:
             self.pe_emb.weight.data.uniform_(-1.0, 1.0)
@@ -219,6 +224,30 @@ class SynGCN(nn.Module):
             weights = weights[weights.nonzero()].squeeze(1)
             outputs = outputs.reshape(s_len*batch_size, -1)
             outputs = self.sgcn(outputs, edge_index, weights)
+            outputs = outputs.reshape(batch_size, s_len, -1)
+
+            if self.opt['ee']:
+                if self.opt['e_attn']:
+                    subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
+                    obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
+                else:
+                    # Average
+                    subj_weights = ((~subj_mask).float())/(~subj_mask).float().sum(-1).view(-1, 1)
+                    obj_weights = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
+
+                subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+                obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
+
+                final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
+
+            else:
+                final_hidden = outputs[:,0,:]
+
+        if self.opt['gat']:
+            # deprel  = self.deprel_emb(deprel)
+            # outputs = torch.cat([outputs, deprel], dim=2)
+            outputs = outputs.reshape(s_len*batch_size, -1)
+            outputs = self.gat(outputs, edge_index)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
             if self.opt['ee']:

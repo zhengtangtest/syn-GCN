@@ -40,6 +40,9 @@ parser.add_argument('--deprel_dim', type=int, default=30, help='Deprel embedding
 parser.add_argument('--rgcn', dest='rgcn', action='store_true', help='R-GCN.')
 parser.set_defaults(rgcn=False)
 
+parser.add_argument('--gat', dest='gat', action='store_true', help='R-GCN.')
+parser.set_defaults(gat=False)
+
 parser.add_argument('--e_attn', dest='e_attn', action='store_true', help='Entity Attention.')
 parser.set_defaults(sgcn=False)
 
