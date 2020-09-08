@@ -134,7 +134,7 @@ class SynGCN(nn.Module):
         if opt['gat']:
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
-            self.gat = GATConv(2*opt['hidden_dim'], opt['hidden_dim'])
+            self.gat = GATConv((2*opt['hidden_dim'], 2*opt['hidden_dim']+opt['deprel_dim']), opt['hidden_dim'])
 
         if opt['gcn'] or opt['sgcn'] or opt['rgcn'] or opt['gat']:
             if opt['ee']:
@@ -244,11 +244,12 @@ class SynGCN(nn.Module):
                 final_hidden = outputs[:,0,:]
 
         if self.opt['gat']:
-            # deprel  = self.deprel_emb(deprel)
-            # outputs = torch.cat([outputs, deprel], dim=2)
-            outputs = outputs.reshape(s_len*batch_size, -1)
-            outputs = self.gat(outputs, edge_index)
-            outputs = outputs.reshape(batch_size, s_len, -1)
+            deprel    = self.deprel_emb(deprel)
+            outputs_t = torch.cat([outputs, deprel], dim=2)
+            outputs   = outputs.reshape(s_len*batch_size, -1)
+            outputs_t = outputs_t.reshape(s_len*batch_size, -1)
+            outputs   = self.gat((outputs, outputs_t), edge_index)
+            outputs   = outputs.reshape(batch_size, s_len, -1)
 
             if self.opt['ee']:
                 if self.opt['e_attn']:
