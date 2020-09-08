@@ -134,7 +134,7 @@ class SynGCN(nn.Module):
         if opt['gat']:
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
-            self.gat = GATConv(2*opt['hidden_dim']+opt['deprel_dim'], opt['hidden_dim'])
+            self.gat = GATConv(2*opt['hidden_dim'], opt['hidden_dim'])
 
         if opt['gcn'] or opt['sgcn'] or opt['rgcn'] or opt['gat']:
             if opt['ee']:
