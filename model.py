@@ -220,11 +220,13 @@ class SynGCN(nn.Module):
 
         if self.opt['sgcn']:
             deprel = self.deprel_emb(deprel)
-            weights = self.attn(deprel, d_masks, outputs[:,0,:]).view(-1)
-            weights = weights[weights.nonzero()].squeeze(1)
-            outputs = outputs.reshape(s_len*batch_size, -1)
-            outputs = self.sgcn(outputs, edge_index, weights)
-            outputs = outputs.reshape(batch_size, s_len, -1)
+            
+            for i in range(self.opt['num_layers']):
+                weights = self.attn(deprel, d_masks, outputs[:,0,:]).view(-1)
+                weights = weights[weights.nonzero()].squeeze(1)
+                outputs = outputs.reshape(s_len*batch_size, -1)
+                outputs = self.sgcn(outputs, edge_index, weights)
+                outputs = outputs.reshape(batch_size, s_len, -1)
 
             if self.opt['ee']:
                 if self.opt['e_attn']:
