@@ -118,7 +118,7 @@ class SynGCN(nn.Module):
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
             self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['d_attn_dim'])
-            self.sgcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
+            self.sgcn = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
 
         if opt['pattn']:
             self.attn_layer = PositionAwareAttention(2*opt['hidden_dim'],
@@ -126,30 +126,22 @@ class SynGCN(nn.Module):
             self.pe_emb = nn.Embedding(constant.MAX_LEN * 2 + 1, opt['pe_dim'])
 
         if opt['rgcn']:
-            self.rgcn = RGCNConv(2*opt['hidden_dim'], opt['hidden_dim'], len(constant.DEPREL_TO_ID)-1, num_bases=len(constant.DEPREL_TO_ID)-1)
+            self.rgcn = RGCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'], len(constant.DEPREL_TO_ID)-1, num_bases=len(constant.DEPREL_TO_ID)-1)
 
         if opt['gcn']:
-            self.gcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
+            self.gcn = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
 
         if opt['gat']:
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
-            self.gat = GATConv((2*opt['hidden_dim'], 2*opt['hidden_dim']+opt['deprel_dim']), opt['hidden_dim'])
+            self.gat = GATConv((2*opt['hidden_dim'], 2*opt['hidden_dim']+opt['deprel_dim']), 2*opt['hidden_dim'])
 
-        if opt['gcn'] or opt['sgcn'] or opt['rgcn'] or opt['gat']:
-            if opt['ee']:
-                self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
-            else:
-                self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
-            if opt['e_attn']:
-                self.entity_attn = Attention(opt['hidden_dim'], opt['hidden_dim'], opt['hidden_dim'])
+        if opt['ee']:
+            self.linear = nn.Linear(4*opt['hidden_dim'], opt['num_class'])
         else:
-            if opt['ee']:
-                self.linear = nn.Linear(4*opt['hidden_dim'], opt['num_class'])
-            else:
-                self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
-            if opt['e_attn']:
-                self.entity_attn = Attention(2*opt['hidden_dim'], 2*opt['hidden_dim'], 2*opt['hidden_dim'])
+            self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
+        if opt['e_attn']:
+            self.entity_attn = Attention(2*opt['hidden_dim'], 2*opt['hidden_dim'], 2*opt['hidden_dim'])
 
         self.opt = opt
         self.topn = self.opt.get('topn', 1e10)
