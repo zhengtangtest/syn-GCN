@@ -34,7 +34,7 @@ parser.set_defaults(gcn=False)
 
 parser.add_argument('--sgcn', dest='sgcn', action='store_true', help='Syn-GCN.')
 parser.set_defaults(sgcn=False)
-parser.add_argument('--d_attn_dim', type=int, default=20, help='Attention size.')
+# parser.add_argument('--d_attn_dim', type=int, default=20, help='Attention size.')
 parser.add_argument('--deprel_dim', type=int, default=30, help='Deprel embedding dimension.')
 
 parser.add_argument('--rgcn', dest='rgcn', action='store_true', help='R-GCN.')

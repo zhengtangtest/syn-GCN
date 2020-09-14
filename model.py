@@ -117,7 +117,7 @@ class SynGCN(nn.Module):
         if opt['sgcn']:
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
-            self.attn = Attention(opt['deprel_dim'], 4*opt['hidden_dim'], opt['d_attn_dim'])
+            self.attn = Attention(opt['deprel_dim'], 4*opt['hidden_dim'])
             self.sgcn = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
 
         if opt['pattn']:
