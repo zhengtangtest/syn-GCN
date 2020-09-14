@@ -223,7 +223,7 @@ class SynGCN(nn.Module):
             outputs = outputs.reshape(s_len*batch_size, -1)
             
             outputs = self.sgcn(outputs, edge_index, weights)
-            outputs = s_outputs.reshape(batch_size, s_len, -1)
+            outputs = outputs.reshape(batch_size, s_len, -1)
 
             subj = subj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
             obj  = obj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
