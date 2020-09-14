@@ -336,11 +336,10 @@ class Attention(nn.Module):
     A GCN layer with attention on deprel as edge weights.
     """
     
-    def __init__(self, input_size, query_size, attn_size):
+    def __init__(self, input_size, query_size):
         super(Attention, self).__init__()
         self.input_size = input_size
         self.query_size = query_size
-        self.attn_size = attn_size
         # self.ulinear = nn.Linear(input_size, attn_size)
         # self.vlinear = nn.Linear(query_size, attn_size, bias=False)
         # self.tlinear = nn.Linear(attn_size, 1)
@@ -352,7 +351,7 @@ class Attention(nn.Module):
         # self.vlinear.weight.data.normal_(std=0.001)
         # self.tlinear.weight.data.zero_() # use zero to give uniform attention at the beginning
         self.weight.data.normal_(std=0.001)
-        
+
     def forward(self, x, x_mask, q):
         """
         x : batch_size * seq_len * input_size
@@ -371,7 +370,7 @@ class Attention(nn.Module):
         #     batch_size, seq_len)
 
         x_proj = torch.matmul(x, self.weight)
-        scores = torch.bmm(x_proj, query.view(batch_size, self.query_size, 1)).view(batch_size, seq_len)
+        scores = torch.bmm(x_proj, q.view(batch_size, self.query_size, 1)).view(batch_size, seq_len)
 
         # mask padding
         scores.data.masked_fill_(x_mask.data, -float('inf'))
