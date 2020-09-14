@@ -117,7 +117,7 @@ class SynGCN(nn.Module):
         if opt['sgcn']:
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
-            self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['d_attn_dim'])
+            self.attn = Attention(opt['deprel_dim'], 4*opt['hidden_dim'], opt['d_attn_dim'])
             self.sgcn = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
 
         if opt['pattn']:
@@ -217,20 +217,16 @@ class SynGCN(nn.Module):
             subj = subj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
             obj  = obj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
 
-            s_weights = self.attn(deprel, d_masks, subj).view(-1)
-            o_weights = self.attn(deprel, d_masks, obj).view(-1)
-            s_weights = s_weights[s_weights.nonzero()].squeeze(1)
-            o_weights = o_weights[o_weights.nonzero()].squeeze(1)
+            weights = self.attn(deprel, d_masks, torch.cat([subj, obj] , dim=1)).view(-1)
+            weights = s_weights[s_weights.nonzero()].squeeze(1)
 
             outputs = outputs.reshape(s_len*batch_size, -1)
             
-            s_outputs = self.sgcn(outputs, edge_index, s_weights)
-            o_outputs = self.sgcn(outputs, edge_index, o_weights)
-            s_outputs = s_outputs.reshape(batch_size, s_len, -1)
-            o_outputs = o_outputs.reshape(batch_size, s_len, -1)
+            outputs = self.sgcn(outputs, edge_index, s_weights)
+            outputs = s_outputs.reshape(batch_size, s_len, -1)
 
-            subj = subj_avg.unsqueeze(1).bmm(s_outputs).squeeze(1)
-            obj  = obj_avg.unsqueeze(1).bmm(o_outputs).squeeze(1)
+            subj = subj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
+            obj  = obj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
 
             final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
 
