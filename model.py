@@ -218,7 +218,7 @@ class SynGCN(nn.Module):
             obj  = obj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
 
             weights = self.attn(deprel, d_masks, torch.cat([subj, obj] , dim=1)).view(-1)
-            weights = s_weights[s_weights.nonzero()].squeeze(1)
+            weights = weights[weights.nonzero()].squeeze(1)
 
             outputs = outputs.reshape(s_len*batch_size, -1)
             
