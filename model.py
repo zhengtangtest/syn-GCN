@@ -221,7 +221,7 @@ class SynGCN(nn.Module):
 
             weights = self.attn(deprel, d_masks, torch.cat([subj, obj] , dim=1)).view(-1)
             weights = weights[weights.nonzero()].squeeze(1)
-            weights = torch.cat([weights, weights])
+            # weights = torch.cat([weights, weights])
 
             outputs = outputs.reshape(s_len*batch_size, -1)
 
