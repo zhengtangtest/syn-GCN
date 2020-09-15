@@ -376,6 +376,7 @@ class Attention(nn.Module):
         scores = torch.bmm(x_proj, q.view(batch_size, self.query_size, 1)).view(batch_size, seq_len)
 
         # mask padding
+        print (scores)
         scores.data.masked_fill_(x_mask.data, -float('inf'))
         weights = F.softmax(scores, dim=1)
 
