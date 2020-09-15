@@ -379,7 +379,7 @@ class Attention(nn.Module):
         print (scores)
         scores.data.masked_fill_(x_mask.data, -float('inf'))
         weights = F.softmax(scores, dim=1)
-
+        print (weights)
         return weights
 
 class PositionAwareAttention(nn.Module):
