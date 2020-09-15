@@ -218,11 +218,9 @@ class SynGCN(nn.Module):
             obj_avg = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
             subj = subj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
             obj  = obj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
-            print (d_masks)
             weights = self.attn(deprel, d_masks, torch.cat([subj, obj] , dim=1)).view(-1)
-            weights = weights[weights.nonzero()].squeeze(1)
+            
             weights = torch.cat([weights, weights])
-            print (batch_size, edge_index.size(), weights.size())
             outputs = outputs.reshape(s_len*batch_size, -1)
             
             outputs = self.sgcn(outputs, edge_index, weights)
@@ -376,10 +374,12 @@ class Attention(nn.Module):
         scores = torch.bmm(x_proj, q.view(batch_size, self.query_size, 1)).view(batch_size, seq_len)
 
         # mask padding
-        print (scores)
         scores.data.masked_fill_(x_mask.data, -float('inf'))
         weights = F.softmax(scores, dim=1)
-        print (weights)
+        print (torch.sum(x_mask))
+        if torch.sum(x_mask) != 0:
+            weights = weights[weights.nonzero()].squeeze(1)
+        
         return weights
 
 class PositionAwareAttention(nn.Module):
