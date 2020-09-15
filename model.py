@@ -220,8 +220,8 @@ class SynGCN(nn.Module):
             obj  = obj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
             weights = self.attn(deprel, d_masks, torch.cat([subj, obj] , dim=1)).view(-1)
             print (weights.size())
-            print (torch.sum(x_mask))
-            if torch.sum(x_mask) != 0:
+            print (torch.sum(d_masks))
+            if torch.sum(d_masks) != 0:
                 weights = weights[weights.nonzero()].squeeze(1)
             print (weights.size())
             weights = torch.cat([weights, weights])

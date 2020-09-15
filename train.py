@@ -125,8 +125,6 @@ format_str = '{}: step {}/{} (epoch {}/{}), loss = {:.6f} ({:.3f} sec/batch), lr
 max_steps = len(train_batch) * opt['num_epoch']
 
 # start training
-best_f1 = 0
-wait = 0
 for epoch in range(1, opt['num_epoch']+1):
     train_loss = 0
     epoch_start_time = time.time()
@@ -165,17 +163,6 @@ for epoch in range(1, opt['num_epoch']+1):
         print("new best model saved.")
     if epoch % opt['save_epoch'] != 0:
         os.remove(model_file)
-    # Early Stopping, patience = 5
-    if epoch <=30 and best_f1 < dev_f1:
-        best_f1 = dev_f1
-    if epoch > 30 and best_f1 > dev_f1:
-        if wait > 5:
-            break
-        else:
-            wait += 1
-    else:
-        best_f1 = dev_f1
-        wait = 0
     # lr schedule
     if len(dev_f1_history) > 10 and dev_f1 <= dev_f1_history[-1] and \
             opt['optim'] in ['sgd', 'adagrad']:
