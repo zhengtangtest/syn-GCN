@@ -219,7 +219,11 @@ class SynGCN(nn.Module):
             subj = subj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
             obj  = obj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
             weights = self.attn(deprel, d_masks, torch.cat([subj, obj] , dim=1)).view(-1)
-            
+            print (weights.size())
+            print (torch.sum(x_mask))
+            if torch.sum(x_mask) != 0:
+                weights = weights[weights.nonzero()].squeeze(1)
+            print (weights.size())
             weights = torch.cat([weights, weights])
             outputs = outputs.reshape(s_len*batch_size, -1)
             print (edge_index.size(), weights.size())
@@ -376,9 +380,6 @@ class Attention(nn.Module):
         # mask padding
         scores.data.masked_fill_(x_mask.data, -float('inf'))
         weights = F.softmax(scores, dim=1)
-        print (torch.sum(x_mask))
-        if torch.sum(x_mask) != 0:
-            weights = weights[weights.nonzero()].squeeze(1)
         
         return weights
 
