@@ -12,8 +12,6 @@ from utils import constant, torch_utils
 
 from torch_geometric.nn import GCNConv, RGCNConv, GATConv
 
-from torch_geometric.data import Data
-
 class RelationModel(object):
     """ A wrapper class for the training and evaluation of models. """
     def __init__(self, opt, emb_matrix=None):
@@ -119,7 +117,7 @@ class SynGCN(nn.Module):
         if opt['sgcn']:
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
-            self.attn = Attention(opt['deprel_dim'], 4*opt['hidden_dim'])
+            self.attn = Attention(opt['deprel_dim'], 4*opt['hidden_dim'], opt['d_attn_dim'])
             self.sgcn = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
 
         if opt['pattn']:
@@ -218,12 +216,12 @@ class SynGCN(nn.Module):
             obj_avg = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
             subj = subj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
             obj  = obj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
-            
+
             weights = self.attn(deprel, d_masks, torch.cat([subj, obj] , dim=1)).view(-1)
             weights = weights[weights.nonzero()].squeeze(1)
-            # weights = torch.cat([weights, weights])
-            
+
             outputs = outputs.reshape(s_len*batch_size, -1)
+            
             outputs = self.sgcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
@@ -338,22 +336,21 @@ class Attention(nn.Module):
     A GCN layer with attention on deprel as edge weights.
     """
     
-    def __init__(self, input_size, query_size):
+    def __init__(self, input_size, query_size, attn_size):
         super(Attention, self).__init__()
         self.input_size = input_size
         self.query_size = query_size
-        # self.ulinear = nn.Linear(input_size, attn_size)
-        # self.vlinear = nn.Linear(query_size, attn_size, bias=False)
-        # self.tlinear = nn.Linear(attn_size, 1)
-        self.weight = nn.Parameter(torch.Tensor(input_size, query_size))
+        self.attn_size = attn_size
+        self.ulinear = nn.Linear(input_size, attn_size)
+        self.vlinear = nn.Linear(query_size, attn_size, bias=False)
+        self.tlinear = nn.Linear(attn_size, 1)
         self.init_weights()
 
     def init_weights(self):
-        # self.ulinear.weight.data.normal_(std=0.001)
-        # self.vlinear.weight.data.normal_(std=0.001)
-        # self.tlinear.weight.data.zero_() # use zero to give uniform attention at the beginning
-        self.weight.data.normal_(std=0.001)
-
+        self.ulinear.weight.data.normal_(std=0.001)
+        self.vlinear.weight.data.normal_(std=0.001)
+        self.tlinear.weight.data.zero_() # use zero to give uniform attention at the beginning
+    
     def forward(self, x, x_mask, q):
         """
         x : batch_size * seq_len * input_size
@@ -362,20 +359,17 @@ class Attention(nn.Module):
         """
         batch_size, seq_len, _ = x.size()
 
-        # x_proj = self.ulinear(x.contiguous().view(-1, self.input_size)).view(
-        #     batch_size, seq_len, self.attn_size)
-        # q_proj = self.vlinear(q.view(-1, self.query_size)).contiguous().view(
-        #     batch_size, self.attn_size).unsqueeze(1).expand(
-        #         batch_size, seq_len, self.attn_size)
-        # projs = [x_proj, q_proj]
-        # scores = self.tlinear(torch.tanh(sum(projs)).view(-1, self.attn_size)).view(
-        #     batch_size, seq_len)
+        x_proj = self.ulinear(x.contiguous().view(-1, self.input_size)).view(
+            batch_size, seq_len, self.attn_size)
+        q_proj = self.vlinear(q.view(-1, self.query_size)).contiguous().view(
+            batch_size, self.attn_size).unsqueeze(1).expand(
+                batch_size, seq_len, self.attn_size)
+        projs = [x_proj, q_proj]
+        scores = self.tlinear(torch.tanh(sum(projs)).view(-1, self.attn_size)).view(
+            batch_size, seq_len)
 
-        x_proj = torch.matmul(x, self.weight)
-        scores = torch.bmm(x_proj, q.view(batch_size, self.query_size, 1)).view(batch_size, seq_len)
         # mask padding
         scores.data.masked_fill_(x_mask.data, -float('inf'))
-        
         weights = F.softmax(scores, dim=1)
         weights.data.masked_fill_((~x_mask).data, 1e-10)
         return weights
