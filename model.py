@@ -239,7 +239,7 @@ class SynGCN(nn.Module):
             subj_out = pool(outputs, subj_mask.unsqueeze(2), type=pool_type)
             obj_out  = pool(outputs, obj_mask.unsqueeze(2), type=pool_type)
 
-            final_hidden = self.drop(torch.cat([h_out, subj, obj] , dim=1))
+            final_hidden = self.drop(torch.cat([h_out, subj_out, obj_out] , dim=1))
 
 
         elif self.opt['gat']:
