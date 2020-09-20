@@ -41,7 +41,8 @@ class RelationModel(object):
         self.optimizer.zero_grad()
         logits, _ = self.model(inputs, batch_size)
         loss = self.criterion(logits, labels)
-        
+        if self.opt.get('conv_l2', 0) > 0:
+            loss += self.model.conv_l2() * self.opt['conv_l2']
         # backward
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt['max_grad_norm'])
@@ -149,6 +150,11 @@ class SynGCN(nn.Module):
         self.emb_matrix = emb_matrix
         self.init_weights()
     
+    def conv_l2(self):
+        # conv_weights = []
+        conv_weights = [self.gcn.weight, self.gcn.bias]
+        return sum([x.pow(2).sum() for x in conv_weights])
+
     def init_weights(self):
         if self.emb_matrix is None:
             self.emb.weight.data[1:,:].uniform_(-1.0, 1.0) # keep padding dimension to be 0
