@@ -224,7 +224,8 @@ class SynGCN(nn.Module):
             deprel = self.deprel_emb(deprel)
 
             pool_type = self.opt['pooling']
-            h_out    = pool(outputs, masks, type=pool_type)
+            print (outputs.size(), masks.unsqueeze(2).size())
+            h_out    = pool(outputs, masks.unsqueeze(2), type=pool_type)
 
             weights = self.attn(deprel, d_masks, h_out).view(-1)
             weights = weights[weights.nonzero()].squeeze(1)
@@ -234,9 +235,9 @@ class SynGCN(nn.Module):
             outputs = self.sgcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
-            h_out    = pool(outputs, masks, type=pool_type)
-            subj_out = pool(outputs, subj_mask, type=pool_type)
-            obj_out  = pool(outputs, obj_mask, type=pool_type)
+            h_out    = pool(outputs, masks.unsqueeze(2), type=pool_type)
+            subj_out = pool(outputs, subj_mask.unsqueeze(2), type=pool_type)
+            obj_out  = pool(outputs, obj_mask.unsqueeze(2), type=pool_type)
 
             final_hidden = self.drop(torch.cat([h_out, subj, obj] , dim=1))
 
