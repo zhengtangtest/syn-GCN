@@ -157,7 +157,8 @@ class SynGCN(nn.Module):
     
     def conv_l2(self):
         # conv_weights = []
-        conv_weights = [self.gcn.weight, self.gcn.bias]
+        conv_weights = [self.sgcn.weight, self.sgcn.bias]
+        conv_weights += [self.sgcn2.weight, self.sgcn2.bias]
         return sum([x.pow(2).sum() for x in conv_weights])
 
     def init_weights(self):
