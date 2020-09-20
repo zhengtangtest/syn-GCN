@@ -37,4 +37,4 @@ GOLD_TO_ID = {True:1, False:0}
 
 INFINITY_NUMBER = 1e12
 
-KEYS = ['words', 'mask', 'deprel', 'd_mask', 'subj_mask', 'obj_mask', 'edge_index', 'rule']
+KEYS = ['words', 'mask', 'deprel', 'd_mask', 'subj_mask', 'obj_mask', 'edge_index']

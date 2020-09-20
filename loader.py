@@ -86,7 +86,7 @@ class BatchLoader(object):
                 subj_positions = get_positions(ss, se, l)
                 obj_positions = get_positions(os, oe, l)
                 relation = 0 if d[1] == 'not_causal' else 1
-                rule = map_to_ids(d[6], vocab.rule2id)
+                rule = map_to_ids(['<ROOT>'] + d[6], vocab.rule2id)
                 gold = map_to_ids([d[9]], constant.GOLD_TO_ID)
                 # if relation == 1:
                 #     pos += 1

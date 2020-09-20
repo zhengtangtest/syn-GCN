@@ -30,6 +30,8 @@ parser.set_defaults(gcn=True)
 parser.add_argument('--attn_dim', type=int, default=20, help='Attention size.')
 parser.add_argument('--deprel_dim', type=int, default=30, help='Deprel embedding dimension.')
 
+parser.add_argument('--tf_r', type=float, default=0.5, help='Teacher forcing ratio for decoder')
+
 # parser.add_argument('--attn', dest='attn', action='store_true', help='Use attention layer.')
 # parser.add_argument('--no-attn', dest='attn', action='store_false')
 # parser.set_defaults(attn=True)
@@ -70,6 +72,7 @@ opt['num_class'] = len(constant.LABEL_TO_ID)
 vocab_file = opt['vocab_dir'] + '/vocab.pkl'
 vocab = Vocab(vocab_file, load=True)
 opt['vocab_size'] = vocab.size
+opt['rule_size'] = len(vocab.id2rule)
 emb_file = opt['vocab_dir'] + '/embedding.npy'
 emb_matrix = np.load(emb_file)
 assert emb_matrix.shape[0] == vocab.size
