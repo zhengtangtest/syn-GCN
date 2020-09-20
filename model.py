@@ -120,7 +120,7 @@ class SynGCN(nn.Module):
         if opt['sgcn']:
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
-            self.attn = Attention(opt['deprel_dim'], 4*opt['hidden_dim'], opt['d_attn_dim'])
+            self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['d_attn_dim'])
             self.sgcn = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
 
         if opt['pattn']:
@@ -139,8 +139,10 @@ class SynGCN(nn.Module):
                     padding_idx=constant.PAD_ID)
             self.gat = GATConv((2*opt['hidden_dim'], 2*opt['hidden_dim']+opt['deprel_dim']), 2*opt['hidden_dim'])
 
-        if opt['ee'] or opt['sgcn']:
+        if opt['ee']:
             self.linear = nn.Linear(4*opt['hidden_dim'], opt['num_class'])
+        elif opt['sgcn']:
+            self.linear = nn.Linear(6*opt['hidden_dim'], opt['num_class'])
         else:
             self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
         if opt['e_attn']:
@@ -220,12 +222,11 @@ class SynGCN(nn.Module):
 
         if self.opt['sgcn']:
             deprel = self.deprel_emb(deprel)
-            subj_avg = ((~subj_mask).float())/(~subj_mask).float().sum(-1).view(-1, 1)
-            obj_avg = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
-            subj = subj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
-            obj  = obj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
 
-            weights = self.attn(deprel, d_masks, torch.cat([subj, obj] , dim=1)).view(-1)
+            pool_type = self.opt['pooling']
+            h_out    = pool(outputs, masks, type=pool_type)
+
+            weights = self.attn(deprel, d_masks, h_out).view(-1)
             weights = weights[weights.nonzero()].squeeze(1)
 
             outputs = outputs.reshape(s_len*batch_size, -1)
@@ -233,10 +234,11 @@ class SynGCN(nn.Module):
             outputs = self.sgcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
-            subj = subj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
-            obj  = obj_avg.unsqueeze(1).bmm(outputs).squeeze(1)
+            h_out    = pool(outputs, masks, type=pool_type)
+            subj_out = pool(outputs, subj_mask, type=pool_type)
+            obj_out  = pool(outputs, obj_mask, type=pool_type)
 
-            final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
+            final_hidden = self.drop(torch.cat([h_out, subj, obj] , dim=1))
 
 
         elif self.opt['gat']:
@@ -382,17 +384,6 @@ class Attention(nn.Module):
         weights.data.masked_fill_((~x_mask).data, 1e-10)
         return weights
 
-def pool(h, mask, type='max'):
-    if type == 'max':
-        h = h.masked_fill(mask, -constant.INFINITY_NUMBER)
-        return torch.max(h, 1)[0]
-    elif type == 'avg':
-        h = h.masked_fill(mask, 0)
-        return h.sum(1) / (mask.size(1) - mask.float().sum(1))
-    else:
-        h = h.masked_fill(mask, 0)
-        return h.sum(1)
-
 class PositionAwareAttention(nn.Module):
     """
     A position-augmented attention layer where the attention weight is
@@ -450,3 +441,14 @@ class PositionAwareAttention(nn.Module):
         # weighted average input vectors
         outputs = weights.unsqueeze(1).bmm(x).squeeze(1)
         return outputs
+
+def pool(h, mask, type='max'):
+    if type == 'max':
+        h = h.masked_fill(mask, -constant.INFINITY_NUMBER)
+        return torch.max(h, 1)[0]
+    elif type == 'avg':
+        h = h.masked_fill(mask, 0)
+        return h.sum(1) / (mask.size(1) - mask.float().sum(1))
+    else:
+        h = h.masked_fill(mask, 0)
+        return h.sum(1)
