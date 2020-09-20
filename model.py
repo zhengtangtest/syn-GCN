@@ -122,6 +122,7 @@ class SynGCN(nn.Module):
                     padding_idx=constant.PAD_ID)
             self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'], opt['d_attn_dim'])
             self.sgcn = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
+            self.sgcn2 = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
 
         if opt['pattn']:
             self.attn_layer = PositionAwareAttention(2*opt['hidden_dim'],
@@ -233,6 +234,15 @@ class SynGCN(nn.Module):
             
             outputs = self.sgcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
+
+            h_out    = pool(outputs, masks.unsqueeze(2), type=pool_type)
+
+            weights = self.attn(deprel, d_masks, h_out).view(-1)
+            weights = weights[weights.nonzero()].squeeze(1)
+
+            outputs = outputs.reshape(s_len*batch_size, -1)
+            
+            outputs = self.sgcn2(outputs, edge_index, weights)
 
             h_out    = pool(outputs, masks.unsqueeze(2), type=pool_type)
             subj_out = pool(outputs, subj_mask.unsqueeze(2), type=pool_type)
