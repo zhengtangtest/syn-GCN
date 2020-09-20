@@ -339,7 +339,7 @@ class SynGCN(nn.Module):
 
 
         logits = self.linear(final_hidden)
-        return logits, final_hidden
+        return logits, h_out
 
 class Attention(nn.Module):
     """
