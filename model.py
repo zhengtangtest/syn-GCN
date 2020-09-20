@@ -39,10 +39,12 @@ class RelationModel(object):
         # step forward
         self.model.train()
         self.optimizer.zero_grad()
-        logits, _ = self.model(inputs, batch_size)
+        logits, pooling_output = self.model(inputs, batch_size)
         loss = self.criterion(logits, labels)
         if self.opt.get('conv_l2', 0) > 0:
             loss += self.model.conv_l2() * self.opt['conv_l2']
+        if self.opt.get('pooling_l2', 0) > 0:
+            loss += self.opt['pooling_l2'] * (pooling_output ** 2).sum(1).mean()
         # backward
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt['max_grad_norm'])
@@ -379,6 +381,17 @@ class Attention(nn.Module):
         weights = F.softmax(scores, dim=1)
         weights.data.masked_fill_((~x_mask).data, 1e-10)
         return weights
+
+def pool(h, mask, type='max'):
+    if type == 'max':
+        h = h.masked_fill(mask, -constant.INFINITY_NUMBER)
+        return torch.max(h, 1)[0]
+    elif type == 'avg':
+        h = h.masked_fill(mask, 0)
+        return h.sum(1) / (mask.size(1) - mask.float().sum(1))
+    else:
+        h = h.masked_fill(mask, 0)
+        return h.sum(1)
 
 class PositionAwareAttention(nn.Module):
     """
