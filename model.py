@@ -233,6 +233,10 @@ class SynGCN(nn.Module):
             outputs = outputs.reshape(s_len*batch_size, -1)
             outputs = self.sgcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
+            torch.set_printoptions(profile="full")
+            print (edge_index)
+            print (outputs)
+            exit()
 
             h_out    = pool(outputs, masks.unsqueeze(2), type=pool_type)
             weights = self.attn(deprel, d_masks, h_out).view(-1)
