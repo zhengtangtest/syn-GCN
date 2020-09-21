@@ -65,11 +65,12 @@ class BatchLoader(object):
     def preprocess(self, data, vocab, opt):
         """ Preprocess the data and convert to ids. """
         processed = []
-        for d in data:
+        for i, d in enumerate(data):
             tokens = d['token']
             if opt['lower']:
                 tokens = [t.lower() for t in tokens]
             tokens = ['<ROOT>'] + tokens
+            l = len(tokens)
             # anonymize tokens
             ss, se = d['subj_start']+1, d['subj_end']+1
             os, oe = d['obj_start']+1, d['obj_end']+1
@@ -82,8 +83,13 @@ class BatchLoader(object):
                 deprel = map_to_ids([constant.PAD_TOKEN]+d['stanford_deprel'], constant.DEPREL_TO_ID)
             else:
                 deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
-            edge_index = [d['stanford_head'], list(range(1, len(d['stanford_head'])+1))]
-            l = len(tokens)
+            
+            if opt['prune_k'] < 0:
+                edge_index = [d['stanford_head'], list(range(1, len(d['stanford_head'])+1))]
+            else:
+                edge_index = prune_tree(l-1, d['stanford_head'], opt['prune_k'], list(range(ss-1, se)), list(range(os-1, oe)))
+                deprel = map_to_ids([d['stanford_deprel'][i-1] for i in edge_index[1]], constant.DEPREL_TO_ID)
+            
             relation = constant.LABEL_TO_ID[d['relation']]
             if opt['pattn']:
                 subj_positions = get_positions(d['subj_start'], d['subj_end'], l)
@@ -128,3 +134,71 @@ def word_dropout(tokens, dropout):
     return [constant.UNK_ID if x != constant.UNK_ID and np.random.random() < dropout \
             else x for x in tokens]
 
+def prune_tree(len_, head, prune, subj_pos, obj_pos):
+    cas = None
+    subj_ancestors = set(subj_pos)
+    for s in subj_pos:
+        h = head[s]
+        tmp = [s]
+        while h > 0:
+            tmp += [h-1]
+            subj_ancestors.add(h-1)
+            h = head[h-1]
+
+        if cas is None:
+            cas = set(tmp)
+        else:
+            cas.intersection_update(tmp)
+
+    obj_ancestors = set(obj_pos)
+    for o in obj_pos:
+        h = head[o]
+        tmp = [o]
+        while h > 0:
+            tmp += [h-1]
+            obj_ancestors.add(h-1)
+            h = head[h-1]
+        cas.intersection_update(tmp)
+
+    # find lowest common ancestor
+    if len(cas) == 1:
+        lca = list(cas)[0]
+    else:
+        child_count = {k:0 for k in cas}
+        for ca in cas:
+            if head[ca] > 0 and head[ca] - 1 in cas:
+                child_count[head[ca] - 1] += 1
+
+        # the LCA has no child in the CA set
+        for ca in cas:
+            if child_count[ca] == 0:
+                lca = ca
+                break
+
+    path_nodes = subj_ancestors.union(obj_ancestors).difference(cas)
+    path_nodes.add(lca)
+    # compute distance to path_nodes
+    dist = [-1 if i not in path_nodes else 0 for i in range(len_)]
+
+    for i in range(len_):
+        if dist[i] < 0:
+            stack = [i]
+            while stack[-1] >= 0 and stack[-1] not in path_nodes:
+                stack.append(head[stack[-1]] - 1)
+
+            if stack[-1] in path_nodes:
+                for d, j in enumerate(reversed(stack)):
+                    dist[j] = d
+            else:
+                for j in stack:
+                    if j >= 0 and dist[j] < 0:
+                        dist[j] = int(1e4) # aka infinity
+    edge_index = [[],[]]
+    for i in range(len_):
+        if dist[i] <= prune:
+            h = head[i]
+            if h >= 0 and i != lca:
+                edge_index[0].append(h)
+                edge_index[1].append(i+1)
+
+    return edge_index

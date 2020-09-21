@@ -35,6 +35,8 @@ parser.add_argument('--conv_l2', type=float, default=0, help='L2-weight decay on
 parser.add_argument('--pooling', choices=['max', 'avg', 'sum'], default='max', help='Pooling function type. Default max.')
 parser.add_argument('--pooling_l2', type=float, default=0, help='L2-penalty for all pooling output.')
 
+parser.add_argument('--prune_k', default=-1, type=int, help='Prune the dependency tree to <= K distance off the dependency path; set to -1 for no pruning.')
+
 parser.add_argument('--sgcn', dest='sgcn', action='store_true', help='Syn-GCN.')
 parser.set_defaults(sgcn=False)
 parser.add_argument('--d_attn_dim', type=int, default=20, help='Attention size.')
