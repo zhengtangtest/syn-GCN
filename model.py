@@ -201,7 +201,7 @@ class SynGCN(nn.Module):
     def forward(self, inputs, batch_size):
         for i in range(len(inputs)-1):
             inputs[i] = inputs[i].view(batch_size, -1)
-        words, masks, pos, ner, deprel, d_masks, subj_mask, obj_mask, edge_index = inputs # unpack
+        words, masks, e_masks, pos, ner, deprel, d_masks, subj_mask, obj_mask, edge_index = inputs # unpack
         s_len = words.size(1)
         seq_lens = list(masks.data.eq(constant.PAD_ID).long().sum(1).squeeze())
         # embedding lookup
@@ -227,25 +227,22 @@ class SynGCN(nn.Module):
 
             pool_type = self.opt['pooling']
             
-            h_out    = pool(outputs, masks.unsqueeze(2), type=pool_type)
+            h_out    = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
             weights = self.attn(deprel, d_masks, h_out).view(-1)
             weights = weights[weights.nonzero()].squeeze(1)
             outputs = outputs.reshape(s_len*batch_size, -1)
             outputs = self.sgcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
             torch.set_printoptions(profile="full")
-            print (edge_index)
-            print (outputs)
-            exit()
 
-            h_out    = pool(outputs, masks.unsqueeze(2), type=pool_type)
+            h_out    = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
             weights = self.attn(deprel, d_masks, h_out).view(-1)
             weights = weights[weights.nonzero()].squeeze(1)
             outputs = outputs.reshape(s_len*batch_size, -1)
             outputs = self.sgcn2(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
-            h_out    = pool(outputs, masks.unsqueeze(2), type=pool_type)
+            h_out    = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
             subj_out = pool(outputs, subj_mask.unsqueeze(2), type=pool_type)
             obj_out  = pool(outputs, obj_mask.unsqueeze(2), type=pool_type)
 

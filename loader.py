@@ -36,7 +36,7 @@ class BatchLoader(object):
         datalist = list()
         for i, batch in enumerate(data):
             batch = list(zip(*batch))
-            assert len(batch) == 8
+            assert len(batch) == 9
             
             # word dropout
             if not self.eval:
@@ -51,8 +51,9 @@ class BatchLoader(object):
             deprel = get_long_tensor(batch[3])
             subj_masks = get_long_tensor(batch[4])
             obj_masks = get_long_tensor(batch[5])
+            e_masks = get_long_tensor(batch[8])
             for i in range(len(words)):
-                datalist += [Data(words=words[i], mask=torch.eq(words[i], 0), pos=pos[i], 
+                datalist += [Data(words=words[i], mask=torch.eq(words[i], 0), e_mask = torch.eq(e_masks[i], 0), pos=pos[i], 
                     ner=ner[i], deprel=deprel[i], d_mask=torch.eq(deprel[i], 0), 
                     subj_mask=torch.eq(subj_masks[i], 0), obj_mask=torch.eq(obj_masks[i], 0), 
                     edge_index=torch.LongTensor(batch[7][i]),
@@ -89,7 +90,7 @@ class BatchLoader(object):
             else:
                 edge_index = prune_tree(l-1, d['stanford_head'], opt['prune_k'], list(range(ss-1, se)), list(range(os-1, oe)))
                 deprel = map_to_ids([d['stanford_deprel'][i-1] for i in edge_index[1]], constant.DEPREL_TO_ID)
-            
+                edge_mask = [1 if i in edge_index[0]+edge_index[1] else 0 for i in range(tokens)]
             relation = constant.LABEL_TO_ID[d['relation']]
             if opt['pattn']:
                 subj_positions = get_positions(d['subj_start'], d['subj_end'], l)
@@ -98,7 +99,7 @@ class BatchLoader(object):
             else:
                 subj_mask = [1 if i in range(ss, se+1) else 0 for i in range(len(tokens))]
                 obj_mask = [1 if i in range(os, oe+1) else 0 for i in range(len(tokens))]
-                processed += [(tokens, pos, ner, deprel, subj_mask, obj_mask, relation, edge_index)]
+                processed += [(tokens, pos, ner, deprel, subj_mask, obj_mask, relation, edge_index, edge_mask)]
         
         return processed
 
