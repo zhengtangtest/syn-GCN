@@ -90,7 +90,7 @@ class BatchLoader(object):
             else:
                 edge_index = prune_tree(l, d['stanford_head'], opt['prune_k'], list(range(ss, se+1)), list(range(os, oe+1)))
                 deprel = map_to_ids([d['stanford_deprel'][i-1] for i in edge_index[1]], constant.DEPREL_TO_ID)
-                edge_mask = [1 if i in edge_index[0]+edge_index[1] else 0 for i in range(l)]
+            edge_mask = [1 if i in edge_index[0]+edge_index[1] else 0 for i in range(l)]
             relation = constant.LABEL_TO_ID[d['relation']]
             if opt['pattn']:
                 subj_positions = get_positions(d['subj_start'], d['subj_end'], l)
