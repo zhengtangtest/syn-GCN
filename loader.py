@@ -70,25 +70,25 @@ class BatchLoader(object):
             tokens = d['token']
             if opt['lower']:
                 tokens = [t.lower() for t in tokens]
-            tokens = ['<ROOT>'] + tokens
             l = len(tokens)
             # anonymize tokens
-            ss, se = d['subj_start']+1, d['subj_end']+1
-            os, oe = d['obj_start']+1, d['obj_end']+1
+            ss, se = d['subj_start'], d['subj_end']
+            os, oe = d['obj_start'], d['obj_end']
             tokens[ss:se+1] = ['SUBJ-'+d['subj_type']] * (se-ss+1)
             tokens[os:oe+1] = ['OBJ-'+d['obj_type']] * (oe-os+1)
             tokens = map_to_ids(tokens, vocab.word2id)
-            pos = map_to_ids(['<ROOT>']+d['stanford_pos'], constant.POS_TO_ID)
-            ner = map_to_ids(['<ROOT>']+d['stanford_ner'], constant.NER_TO_ID)
+            pos = map_to_ids(d['stanford_pos'], constant.POS_TO_ID)
+            ner = map_to_ids(d['stanford_ner'], constant.NER_TO_ID)
             if self.opt['gat']:
                 deprel = map_to_ids([constant.PAD_TOKEN]+d['stanford_deprel'], constant.DEPREL_TO_ID)
             else:
                 deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
             
             if opt['prune_k'] < 0:
-                edge_index = [d['stanford_head'], list(range(1, len(d['stanford_head'])+1))]
+                edge_index = [[h-1 for h in d['stanford_head'] if h != 0], 
+                [i for i, h in enumerate(d['stanford_head']) if h != 0]]
             else:
-                edge_index = prune_tree(l-1, d['stanford_head'], opt['prune_k'], list(range(ss-1, se)), list(range(os-1, oe)))
+                edge_index = prune_tree(l, d['stanford_head'], opt['prune_k'], list(range(ss, se+1)), list(range(os, oe+1)))
                 deprel = map_to_ids([d['stanford_deprel'][i-1] for i in edge_index[1]], constant.DEPREL_TO_ID)
                 edge_mask = [1 if i in edge_index[0]+edge_index[1] else 0 for i in range(l)]
             relation = constant.LABEL_TO_ID[d['relation']]
@@ -199,7 +199,7 @@ def prune_tree(len_, head, prune, subj_pos, obj_pos):
         if dist[i] <= prune:
             h = head[i]
             if h >= 0 and i != lca:
-                edge_index[0].append(h)
-                edge_index[1].append(i+1)
+                edge_index[0].append(h-1)
+                edge_index[1].append(i)
 
     return edge_index
