@@ -66,7 +66,7 @@ class BatchLoader(object):
     def preprocess(self, data, vocab, opt):
         """ Preprocess the data and convert to ids. """
         processed = []
-        for i, d in enumerate(data):
+        for c, d in enumerate(data):
             tokens = d['token']
             if opt['lower']:
                 tokens = [t.lower() for t in tokens]
@@ -89,7 +89,10 @@ class BatchLoader(object):
                 [i for i, h in enumerate(d['stanford_head']) if h != 0]]
             else:
                 edge_index = prune_tree(l, d['stanford_head'], opt['prune_k'], list(range(ss, se+1)), list(range(os, oe+1)))
-                deprel = map_to_ids([d['stanford_deprel'][i-1] for i in edge_index[1]], constant.DEPREL_TO_ID)
+                deprel = map_to_ids([d['stanford_deprel'][i] for i in edge_index[1]], constant.DEPREL_TO_ID)
+                if deprel[-1] == 2:
+                    deprel = deprel[:-1]
+                    edge_index = [edge_index[0][:-1], edge_index[1][:-1]]
             edge_mask = [1 if i in edge_index[0]+edge_index[1] else 0 for i in range(l)]
             relation = constant.LABEL_TO_ID[d['relation']]
             if opt['pattn']:
@@ -137,7 +140,11 @@ def word_dropout(tokens, dropout):
 
 def prune_tree(len_, head, prune, subj_pos, obj_pos):
     cas = None
-    subj_ancestors = set(subj_pos)
+    subj_ancestors = set()
+    for s in subj_pos:
+        if head[s]-1 not in subj_pos:
+            subj_ancestors.add(s)
+    subj_pos = list(subj_ancestors)
     for s in subj_pos:
         h = head[s]
         tmp = [s]
@@ -150,8 +157,11 @@ def prune_tree(len_, head, prune, subj_pos, obj_pos):
             cas = set(tmp)
         else:
             cas.intersection_update(tmp)
-
-    obj_ancestors = set(obj_pos)
+    obj_ancestors = set()
+    for o in obj_pos:
+        if head[o]-1 not in obj_pos:
+            obj_ancestors.add(o)
+    obj_pos = list(obj_ancestors)
     for o in obj_pos:
         h = head[o]
         tmp = [o]
