@@ -121,8 +121,8 @@ class SynGCN(nn.Module):
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
             self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'])
-            self.sgcn = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
-            self.sgcn2 = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
+            self.sgcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
+            self.sgcn2 = GCNConv(opt['hidden_dim'], opt['hidden_dim'])
 
         if opt['pattn']:
             self.attn_layer = PositionAwareAttention(2*opt['hidden_dim'],
@@ -144,7 +144,7 @@ class SynGCN(nn.Module):
             self.linear = nn.Linear(4*opt['hidden_dim'], opt['num_class'])
         elif opt['sgcn']:
             # output mlp layers
-            in_dim = opt['hidden_dim']*6
+            in_dim = opt['hidden_dim']*3
             layers = [nn.Linear(in_dim, opt['hidden_dim']), nn.ReLU()]
             for _ in range(opt['mlp_layers']-1):
                 layers += [nn.Linear(opt['hidden_dim'], opt['hidden_dim']), nn.ReLU()]
