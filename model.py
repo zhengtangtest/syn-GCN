@@ -143,7 +143,13 @@ class SynGCN(nn.Module):
         if opt['ee']:
             self.linear = nn.Linear(4*opt['hidden_dim'], opt['num_class'])
         elif opt['sgcn']:
-            self.linear = nn.Linear(6*opt['hidden_dim'], opt['num_class'])
+            # output mlp layers
+            in_dim = opt['hidden_dim']*6
+            layers = [nn.Linear(in_dim, opt['hidden_dim']), nn.ReLU()]
+            for _ in range(self.opt['mlp_layers']-1):
+                layers += [nn.Linear(opt['hidden_dim'], opt['hidden_dim']), nn.ReLU()]
+            self.out_mlp = nn.Sequential(*layers)
+            self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
         else:
             self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
         if opt['e_attn']:
@@ -345,7 +351,7 @@ class SynGCN(nn.Module):
             else:
                 final_hidden = outputs[:,0,:]
 
-
+        final_hidden = self.out_mlp(final_hidden)
         logits = self.linear(final_hidden)
         return logits, h_out
 

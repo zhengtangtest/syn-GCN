@@ -34,7 +34,7 @@ parser.set_defaults(gcn=False)
 parser.add_argument('--conv_l2', type=float, default=0, help='L2-weight decay on conv layers only.')
 parser.add_argument('--pooling', choices=['max', 'avg', 'sum'], default='max', help='Pooling function type. Default max.')
 parser.add_argument('--pooling_l2', type=float, default=0, help='L2-penalty for all pooling output.')
-
+parser.add_argument('--mlp_layers', type=int, default=2, help='Number of output mlp layers.')
 parser.add_argument('--prune_k', default=-1, type=int, help='Prune the dependency tree to <= K distance off the dependency path; set to -1 for no pruning.')
 
 parser.add_argument('--sgcn', dest='sgcn', action='store_true', help='Syn-GCN.')
