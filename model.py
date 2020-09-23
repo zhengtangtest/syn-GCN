@@ -146,7 +146,7 @@ class SynGCN(nn.Module):
             # output mlp layers
             in_dim = opt['hidden_dim']*6
             layers = [nn.Linear(in_dim, opt['hidden_dim']), nn.ReLU()]
-            for _ in range(self.opt['mlp_layers']-1):
+            for _ in range(opt['mlp_layers']-1):
                 layers += [nn.Linear(opt['hidden_dim'], opt['hidden_dim']), nn.ReLU()]
             self.out_mlp = nn.Sequential(*layers)
             self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
