@@ -121,7 +121,7 @@ class SynGCN(nn.Module):
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
             self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'])
-            self.sgcn = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
+            # self.sgcn = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
             self.sgcn2 = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
 
         if opt['pattn']:
@@ -233,13 +233,12 @@ class SynGCN(nn.Module):
 
             pool_type = self.opt['pooling']
             
-            h_out    = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
-            weights = self.attn(deprel, d_masks, h_out).view(-1)
-            weights = weights[weights.nonzero()].squeeze(1)
-            outputs = outputs.reshape(s_len*batch_size, -1)
-            outputs = self.sgcn(outputs, edge_index, weights)
-            outputs = outputs.reshape(batch_size, s_len, -1)
-            torch.set_printoptions(profile="full")
+            # h_out    = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
+            # weights = self.attn(deprel, d_masks, h_out).view(-1)
+            # weights = weights[weights.nonzero()].squeeze(1)
+            # outputs = outputs.reshape(s_len*batch_size, -1)
+            # outputs = self.sgcn(outputs, edge_index, weights)
+            # outputs = outputs.reshape(batch_size, s_len, -1)
 
             h_out    = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
             weights = self.attn(deprel, d_masks, h_out).view(-1)
