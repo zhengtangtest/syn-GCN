@@ -9,7 +9,6 @@ import pickle
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from tqdm import tqdm
 
 from loader import BatchLoader
 from model import RelationModel
@@ -55,18 +54,12 @@ eval_batch = BatchLoader(data_file, opt['batch_size'], opt, vocab, evaluation=Tr
 helper.print_config(opt)
 id2label = dict([(v,k) for k,v in constant.LABEL_TO_ID.items()])
 
-helper.print_config(opt)
-label2id = constant.LABEL_TO_ID
-id2label = dict([(v,k) for k,v in label2id.items()])
-
 predictions = []
 all_probs = []
-batch_iter = tqdm(eval_batch)
-for i, b in enumerate(batch_iter):
-    preds, probs, _ = trainer.predict(b)
+for batch in eval_batch.data:
+    preds, probs, _ = model.predict(batch)
     predictions += preds
     all_probs += probs
-
 predictions = [id2label[p] for p in predictions]
 p, r, f1 = scorer.score(batch.gold(), predictions, verbose=True)
 print("{} set evaluate result: {:.2f}\t{:.2f}\t{:.2f}".format(args.dataset,p,r,f1))
