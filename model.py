@@ -121,39 +121,23 @@ class SynGCN(nn.Module):
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
             self.attn = Attention(opt['deprel_dim'], 2*opt['hidden_dim'])
-            # self.sgcn = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
-            self.sgcn2 = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
-
-        if opt['pattn']:
-            self.attn_layer = PositionAwareAttention(2*opt['hidden_dim'],
-                    2*opt['hidden_dim'], 2*opt['pe_dim'], opt['attn_dim'])
-            self.pe_emb = nn.Embedding(constant.MAX_LEN * 2 + 1, opt['pe_dim'])
-
+            self.sgcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
         if opt['rgcn']:
-            self.rgcn = RGCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'], len(constant.DEPREL_TO_ID)-1, num_bases=len(constant.DEPREL_TO_ID)-1)
-
+            self.rgcn = RGCNConv(2*opt['hidden_dim'], opt['hidden_dim'], len(constant.DEPREL_TO_ID)-1, num_bases=len(constant.DEPREL_TO_ID)-1)
         if opt['gcn']:
-            self.gcn = GCNConv(2*opt['hidden_dim'], 2*opt['hidden_dim'])
-
+            self.gcn = GCNConv(2*opt['hidden_dim'], opt['hidden_dim'])
         if opt['gat']:
             self.deprel_emb = nn.Embedding(len(constant.DEPREL_TO_ID), opt['deprel_dim'],
                     padding_idx=constant.PAD_ID)
-            self.gat = GATConv((2*opt['hidden_dim'], 2*opt['hidden_dim']+opt['deprel_dim']), 2*opt['hidden_dim'])
+            self.gat = GATConv((2*opt['hidden_dim'], 2*opt['hidden_dim']+opt['deprel_dim']), opt['hidden_dim'])
 
-        if opt['ee']:
-            self.linear = nn.Linear(4*opt['hidden_dim'], opt['num_class'])
-        elif opt['sgcn']:
-            # output mlp layers
-            in_dim = opt['hidden_dim']*3
-            layers = [nn.Linear(in_dim, opt['hidden_dim']), nn.ReLU()]
-            for _ in range(opt['mlp_layers']-1):
-                layers += [nn.Linear(opt['hidden_dim'], opt['hidden_dim']), nn.ReLU()]
-            self.out_mlp = nn.Sequential(*layers)
-            self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
-        else:
-            self.linear = nn.Linear(2*opt['hidden_dim'], opt['num_class'])
-        if opt['e_attn']:
-            self.entity_attn = Attention(2*opt['hidden_dim'], 2*opt['hidden_dim'], 2*opt['hidden_dim'])
+        # output mlp layers
+        in_dim = opt['hidden_dim']*3
+        layers = [nn.Linear(in_dim, opt['hidden_dim']), nn.ReLU()]
+        for _ in range(opt['mlp_layers']-1):
+            layers += [nn.Linear(opt['hidden_dim'], opt['hidden_dim']), nn.ReLU()]
+        self.out_mlp = nn.Sequential(*layers)
+        self.linear = nn.Linear(opt['hidden_dim'], opt['num_class'])
 
         self.opt = opt
         self.topn = self.opt.get('topn', 1e10)
@@ -233,18 +217,11 @@ class SynGCN(nn.Module):
 
             pool_type = self.opt['pooling']
             
-            # h_out    = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
-            # weights = self.attn(deprel, d_masks, h_out).view(-1)
-            # weights = weights[weights.nonzero()].squeeze(1)
-            # outputs = outputs.reshape(s_len*batch_size, -1)
-            # outputs = self.sgcn(outputs, edge_index, weights)
-            # outputs = outputs.reshape(batch_size, s_len, -1)
-
             h_out    = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
             weights = self.attn(deprel, d_masks, h_out).view(-1)
             weights = weights[weights.nonzero()].squeeze(1)
             outputs = outputs.reshape(s_len*batch_size, -1)
-            outputs = self.sgcn2(outputs, edge_index, weights)
+            outputs = self.sgcn(outputs, edge_index, weights)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
             h_out    = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
@@ -262,93 +239,43 @@ class SynGCN(nn.Module):
             outputs   = self.gat((outputs, outputs_t), edge_index)
             outputs   = outputs.reshape(batch_size, s_len, -1)
 
-            if self.opt['ee']:
-                if self.opt['e_attn']:
-                    subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
-                    obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
-                else:
-                    # Average
-                    subj_weights = ((~subj_mask).float())/(~subj_mask).float().sum(-1).view(-1, 1)
-                    obj_weights = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
+            h_out    = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
+            subj_out = pool(outputs, subj_mask.unsqueeze(2), type=pool_type)
+            obj_out  = pool(outputs, obj_mask.unsqueeze(2), type=pool_type)
 
-                subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
-                obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
-
-                final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
-
-            else:
-                final_hidden = outputs[:,0,:]
+            final_hidden = self.drop(torch.cat([h_out, subj_out, obj_out] , dim=1))
 
         elif self.opt['gcn']:
+            pool_type = self.opt['pooling']
+            
             outputs = outputs.reshape(s_len*batch_size, -1)
             outputs = self.gcn(outputs, edge_index)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
-            if self.opt['ee']:
-                if self.opt['e_attn']:
-                    subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
-                    obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
-                else:
-                    # Average
-                    subj_weights = ((~subj_mask).float())/(~subj_mask).float().sum(-1).view(-1, 1)
-                    obj_weights = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
+            h_out    = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
+            subj_out = pool(outputs, subj_mask.unsqueeze(2), type=pool_type)
+            obj_out  = pool(outputs, obj_mask.unsqueeze(2), type=pool_type)
 
-                subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
-                obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
-
-                final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
-
-            else:
-                final_hidden = outputs[:,0,:]
+            final_hidden = self.drop(torch.cat([h_out, subj_out, obj_out] , dim=1))
         
-        elif self.opt['pattn']:
-            # convert all negative PE numbers to positive indices
-            # e.g., -2 -1 0 1 will be mapped to 98 99 100 101
-            subj_pe_inputs = self.pe_emb(subj_pos + constant.MAX_LEN)
-            obj_pe_inputs = self.pe_emb(obj_pos + constant.MAX_LEN)
-            pe_features = torch.cat((subj_pe_inputs, obj_pe_inputs), dim=2)
-            final_hidden = self.attn_layer(outputs, masks, hidden, pe_features)
-
         elif self.opt['rgcn']:
-            outputs = outputs.reshape(s_len*batch_size, -1)
             deprel  = deprel.reshape(-1)
             deprel  = (deprel[deprel.nonzero()] - 1).reshape(-1)
+
+            pool_type = self.opt['pooling']
+            
+            h_out    = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
+            weights = self.attn(deprel, d_masks, h_out).view(-1)
+            weights = weights[weights.nonzero()].squeeze(1)
+            outputs = outputs.reshape(s_len*batch_size, -1)
             outputs = self.rgcn(outputs, edge_index, deprel)
             outputs = outputs.reshape(batch_size, s_len, -1)
 
-            if self.opt['ee']:
-                if self.opt['e_attn']:
-                    subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
-                    obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
-                else:
-                    # Average
-                    subj_weights = ((~subj_mask).float())/(~subj_mask).float().sum(-1).view(-1, 1)
-                    obj_weights = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
+            h_out    = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
+            subj_out = pool(outputs, subj_mask.unsqueeze(2), type=pool_type)
+            obj_out  = pool(outputs, obj_mask.unsqueeze(2), type=pool_type)
 
-                subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
-                obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
-
-                final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
-
-            else:
-                final_hidden = outputs[:,0,:]
-        else:
-            if self.opt['ee']:
-                if self.opt['e_attn']:
-                    subj_weights = self.entity_attn(outputs, subj_mask, outputs[:,0,:])
-                    obj_weights  = self.entity_attn(outputs, obj_mask, outputs[:,0,:])
-                else:
-                    # Average
-                    subj_weights = ((~subj_mask).float())/(~subj_mask).float().sum(-1).view(-1, 1)
-                    obj_weights = ((~obj_mask).float())/(~obj_mask).float().sum(-1).view(-1, 1)
-
-                subj = subj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
-                obj  = obj_weights.unsqueeze(1).bmm(outputs).squeeze(1)
-
-                final_hidden = self.drop(torch.cat([subj, obj] , dim=1))
-
-            else:
-                final_hidden = outputs[:,0,:]
+            final_hidden = self.drop(torch.cat([h_out, subj_out, obj_out] , dim=1))
 
         final_hidden = self.out_mlp(final_hidden)
         logits = self.linear(final_hidden)
