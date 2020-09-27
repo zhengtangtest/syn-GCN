@@ -100,8 +100,8 @@ class BatchLoader(object):
                 obj_positions = get_positions(d['obj_start'], d['obj_end'], l)
                 processed += [(tokens, pos, ner, deprel, subj_positions, obj_positions, relation, edge_index)]
             else:
-                subj_mask = [1 if i in range(ss, se+1) else 0 for i in range(len(tokens))]
-                obj_mask = [1 if i in range(os, oe+1) else 0 for i in range(len(tokens))]
+                subj_mask = [1 if (i in range(ss, se+1) and i in edge_index[0]+edge_index[1]) else 0 for i in range(len(tokens))]
+                obj_mask = [1 if (i in range(os, oe+1) and i in edge_index[0]+edge_index[1]) else 0 for i in range(len(tokens))]
                 processed += [(tokens, pos, ner, deprel, subj_mask, obj_mask, relation, edge_index, edge_mask)]
         
         return processed
