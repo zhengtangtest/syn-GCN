@@ -117,7 +117,7 @@ class SynGCN(nn.Module):
         if opt['trans']:
             encoder_layer = nn.TransformerEncoderLayer(d_model=input_size, nhead=8)
             self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=6)
-            self.tlinear = nn.Linear(input_size, opt['hidden_dim'])
+            self.tlinear = nn.Linear(input_size, 2 * opt['hidden_dim'])
         else:
             self.rnn = nn.LSTM(input_size, opt['hidden_dim'], opt['num_layers'], batch_first=True,\
                 dropout=opt['dropout'], bidirectional=True)
