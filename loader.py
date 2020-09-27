@@ -93,7 +93,8 @@ class BatchLoader(object):
                 if deprel[-1] == 2:
                     deprel = deprel[:-1]
                     edge_index = [edge_index[0][:-1], edge_index[1][:-1]]
-            edge_mask = [1 if i in edge_index[0]+edge_index[1] else 0 for i in range(l)]
+                edge_index = [edge_index[0]+edge_index[1], edge_index[1]+edge_index[0]]
+            edge_mask = [1 if i in edge_index[1] else 0 for i in range(l)]
             relation = constant.LABEL_TO_ID[d['relation']]
             if opt['pattn']:
                 subj_positions = get_positions(d['subj_start'], d['subj_end'], l)
@@ -211,5 +212,4 @@ def prune_tree(len_, head, prune, subj_pos, obj_pos):
             if h >= 0 and i != lca:
                 edge_index[0].append(h-1)
                 edge_index[1].append(i)
-
     return edge_index
