@@ -112,9 +112,14 @@ class SynGCN(nn.Module):
         if opt['ner_dim'] > 0:
             self.ner_emb = nn.Embedding(len(constant.NER_TO_ID), opt['ner_dim'],
                     padding_idx=constant.PAD_ID)
-        
+
         input_size = opt['emb_dim'] + opt['pos_dim'] + opt['ner_dim']
-        self.rnn = nn.LSTM(input_size, opt['hidden_dim'], opt['num_layers'], batch_first=True,\
+        if opt['trans']:
+            encoder_layer = nn.TransformerEncoderLayer(d_model=input_size, nhead=8)
+            self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=6)
+            self.tlinear = nn.Linear(input_size, opt['hidden_dim'])
+        else:
+            self.rnn = nn.LSTM(input_size, opt['hidden_dim'], opt['num_layers'], batch_first=True,\
                 dropout=opt['dropout'], bidirectional=True)
 
         if opt['sgcn']:
@@ -203,12 +208,17 @@ class SynGCN(nn.Module):
             inputs += [self.ner_emb(ner)]
         inputs = self.drop(torch.cat(inputs, dim=2)) # add dropout to input
         input_size = inputs.size(2)
-        
-        # rnn
-        h0, c0 = self.zero_state(batch_size)
-        inputs = nn.utils.rnn.pack_padded_sequence(inputs, seq_lens, batch_first=True)
-        outputs, (ht, ct) = self.rnn(inputs, (h0, c0))
-        outputs, output_lens = nn.utils.rnn.pad_packed_sequence(outputs, batch_first=True)
+        if self.opt['trans']:
+            # transformer
+            inputs  = inputs.transpose(1,0)
+            outputs = self.transformer_encoder(inputs, src_key_padding_mask=masks)
+            outputs = self.tlinear(outputs)
+        else:
+            # rnn
+            h0, c0 = self.zero_state(batch_size)
+            inputs = nn.utils.rnn.pack_padded_sequence(inputs, seq_lens, batch_first=True)
+            outputs, (ht, ct) = self.rnn(inputs, (h0, c0))
+            outputs, output_lens = nn.utils.rnn.pad_packed_sequence(outputs, batch_first=True)
         # hidden = self.drop(ht[-1,:,:]) # get the outmost layer h_n
         outputs = self.drop(outputs)
 
