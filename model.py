@@ -213,6 +213,7 @@ class SynGCN(nn.Module):
             inputs  = inputs.transpose(1,0)
             outputs = self.transformer_encoder(inputs, src_key_padding_mask=masks)
             outputs = self.tlinear(outputs)
+            outputs = outputs.transpose(1,0)
         else:
             # rnn
             h0, c0 = self.zero_state(batch_size)
