@@ -245,6 +245,8 @@ class SynGCN(nn.Module):
 
 
         elif self.opt['gat']:
+            pool_type = self.opt['pooling']
+            
             deprel    = self.deprel_emb(deprel)
             outputs_t = torch.cat([outputs, deprel], dim=2)
             outputs   = outputs.reshape(s_len*batch_size, -1)
