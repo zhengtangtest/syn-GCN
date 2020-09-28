@@ -40,7 +40,7 @@ parser.add_argument('--prune_k', default=-1, type=int, help='Prune the dependenc
 parser.add_argument('--sgcn', dest='sgcn', action='store_true', help='Syn-GCN.')
 parser.set_defaults(sgcn=False)
 parser.add_argument('--d_attn_dim', type=int, default=50, help='Attention size.')
-parser.add_argument('--deprel_dim', type=int, default=200, help='Deprel embedding dimension.')
+parser.add_argument('--deprel_dim', type=int, default=100, help='Deprel embedding dimension.')
 
 parser.add_argument('--rgcn', dest='rgcn', action='store_true', help='R-GCN.')
 parser.set_defaults(rgcn=False)

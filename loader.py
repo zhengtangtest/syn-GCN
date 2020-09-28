@@ -80,7 +80,7 @@ class BatchLoader(object):
             pos = map_to_ids(d['stanford_pos'], constant.POS_TO_ID)
             ner = map_to_ids(d['stanford_ner'], constant.NER_TO_ID)
             if self.opt['gat']:
-                deprel = map_to_ids([constant.PAD_TOKEN]+d['stanford_deprel'], constant.DEPREL_TO_ID)
+                deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
             else:
                 deprel = map_to_ids([d for d in d['stanford_deprel'] if d!='ROOT'], constant.DEPREL_TO_ID)
             
