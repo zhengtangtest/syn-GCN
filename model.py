@@ -269,6 +269,7 @@ class SynGCN(nn.Module):
             
             h_out    = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
             weights = self.attn(deprel, d_masks, h_out).view(-1)
+            print (weights)
             weights = weights[weights.nonzero()].squeeze(1)
             outputs = outputs.reshape(s_len*batch_size, -1)
             outputs = self.rgcn(outputs, edge_index, deprel)
