@@ -82,7 +82,7 @@ class BatchLoader(object):
             if self.opt['gat']:
                 deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
             else:
-                deprel = map_to_ids([d for d in d['stanford_deprel'] if d!='ROOT'], constant.DEPREL_TO_ID)
+                deprel = map_to_ids([d for d in d['stanford_deprel'] if d!='ROOT' and d!='root'], constant.DEPREL_TO_ID)
             
             if opt['prune_k'] < 0:
                 edge_index = [[h-1 for h in d['stanford_head'] if h != 0], 
