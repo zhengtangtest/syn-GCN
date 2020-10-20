@@ -104,6 +104,7 @@ def build_vocab(tokens, glove_vocab, min_freq):
 def build_rule_vocab(tokens):
     counter = Counter(t for t in tokens)
     v = sorted([t for t in counter], key=counter.get, reverse=True)
+    v = constant.VOCAB_PREFIX + v
     print("rule vocab built with {}/{} tokens.".format(len(v), len(counter)))
     return v
 

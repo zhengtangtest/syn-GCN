@@ -10,18 +10,22 @@ import torch.nn.functional as F
 
 from utils import constant, torch_utils
 
+# from torch.autograd import Variable
+
 from torch_geometric.nn import GCNConv
 
 class RelationModel(object):
     """ A wrapper class for the training and evaluation of models. """
     def __init__(self, opt, emb_matrix=None):
         self.opt = opt
-        self.model = SynGCN(opt, emb_matrix)
+        self.classifier = SynGCN(opt, emb_matrix)
         self.decoder = Decoder(opt)
         self.criterion = nn.CrossEntropyLoss()
-        self.parameters = [p for p in self.model.parameters() if p.requires_grad]
+        self.criterion_d = nn.NLLLoss(ignore_index=constant.PAD_ID)
+        self.parameters = [p for p in self.classifier.parameters() if p.requires_grad]
         if opt['cuda']:
-            self.model.cuda()
+            self.classifier.cuda()
+            self.decoder.cuda()
             self.criterion.cuda()
         self.optimizer = torch_utils.get_optimizer(opt['optim'], self.parameters, opt['lr'])
     
@@ -32,43 +36,46 @@ class RelationModel(object):
             for b in constant.KEYS:
                 inputs += [batch[b].cuda()]
             labels = batch.rel.cuda()
-            rules  = batch.rules.cuda()
+            rules  = batch.rule.cuda()
         else:
             for b in constant.KEYS:
                 inputs += [batch[b]]
             labels = batch.rel
-            rules  = batch.rules
+            rules  = batch.rule
         batch_size = labels.size(0)
         # step forward
-        self.model.train()
+        self.classifier.train()
+        self.decoder.train()
         self.optimizer.zero_grad()
-        logits, hidden, encoder_outputs = self.model(inputs, batch_size)
+
+
+        logits, hidden, encoder_outputs = self.classifier(inputs, batch_size)
         loss = self.criterion(logits, labels)
         
         #DECODER PART
+        rules = rules.view(batch_size, -1)
+        masks = inputs[1]
         max_len = rules.size(1)
         rules = rules.transpose(1,0)
-        output = Variable(rules.data[0, :])  # sos
-        outputs = Variable(torch.zeros(max_len, batch_size, self.opt['rule_size']))
-        if self.opt['cuda']:
-                outputs = outputs.cuda()
+        output = rules.data[0, :] # sos
+        # outputs = torch.zeros(max_len, batch_size, self.opt['rule_size'])
+        # if self.opt['cuda']:
+        #         outputs = outputs.cuda()
+        loss_d = 0
         for t in range(1, max_len):
             output, hidden, attn_weights = self.decoder(
-                    output, hidden, encoder_outputs)
-            outputs[t] = output
-            is_teacher = random.random() < self.opt['tf_r']
-            top1 = output.data.max(1)[1]
-            output = Variable(rules.data[t] if is_teacher else top1)
+                    output, masks, hidden, encoder_outputs)
+            loss_d += self.criterion_d(output, rules[t])
+            # outputs[t] = output
+            # top1 = output.data.max(1)[1]
+            output = rules.data[t]
             if self.opt['cuda']:
                 output = output.cuda()
-
-        loss_d = F.nll_loss(output[1:].view(-1, self.opt['rule_size']),
-               rules[1:].contiguous().view(-1),
-               ignore_index=pad)
-
+        loss += loss_d
         # backward
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt['max_grad_norm'])
+        torch.nn.utils.clip_grad_norm_(self.classifier.parameters(), self.opt['max_grad_norm'])
+        torch.nn.utils.clip_grad_norm_(self.decoder.parameters(), self.opt['max_grad_norm'])
         self.optimizer.step()
         loss_val = loss.data.item()
         return loss_val
@@ -88,8 +95,8 @@ class RelationModel(object):
         batch_size = labels.size(0)
 
         # forward
-        self.model.eval()
-        logits, _ = self.model(inputs, batch_size)
+        self.classifier.eval()
+        logits, hidden, encoder_outputs = self.classifier(inputs, batch_size)
         loss = self.criterion(logits, labels)
         probs = F.softmax(logits, dim=1).data.cpu().numpy().tolist()
         predictions = np.argmax(logits.data.cpu().numpy(), axis=1).tolist()
@@ -276,26 +283,28 @@ class Decoder(nn.Module):
         self.embed = nn.Embedding(self.output_size, self.embed_size)
         self.dropout = nn.Dropout(opt['dropout'], inplace=True)
         self.attention = Attention(self.hidden_size, 2*opt['hidden_dim'], opt['attn_dim'])
-        self.rnn = nn.LSTM(self.hidden_size + self.embed_size, self.hidden_size,
-                          self.n_layers, dropout=dropout)
-        self.out = nn.Linear(self.hidden_size * 2, output_size)
+        self.rnn = nn.LSTM(self.embed_size, self.hidden_size,
+                          self.n_layers, dropout=opt['dropout'], bidirectional=True)
+        self.out = nn.Linear(2 * self.hidden_size, self.output_size)
 
-    def forward(self, input, last_hidden, encoder_outputs):
+    def forward(self, input, masks, last_hidden, encoder_outputs):
 
         # Get the embedding of the current input word (last output word)
         embedded = self.embed(input).unsqueeze(0)  # (1,B,N)
         embedded = self.dropout(embedded)
-        # Calculate attention weights and apply to encoder outputs
-        attn_weights = self.attention(encoder_outputs, masks, last_hidden[-1])
-        context = attn_weights.bmm(encoder_outputs.transpose(0, 1))  # (B,1,N)
-        context = context.transpose(0, 1)  # (1,B,N)
-        # Combine embedded input word and attended context, run through RNN
-        rnn_input = torch.cat([embedded, context], 2)
-        output, hidden = self.rnn(rnn_input, last_hidden, batch_first=True)
+
+        # batch_size = encoder_outputs.size(0)
+        # # Calculate attention weights and apply to encoder outputs
+        # attn_weights = self.attention(encoder_outputs, masks, last_hidden[0].view(2, batch_size,-1)[-1])
+        # context = attn_weights.bmm(encoder_outputs.transpose(0, 1))  # (B,1,N)
+        # context = context.transpose(0, 1)  # (1,B,N)
+        # # Combine embedded input word and attended context, run through RNN
+        rnn_input = embedded #torch.cat([embedded, context], 2)
+        output, hidden = self.rnn(rnn_input, last_hidden)
         output = output.squeeze(0)  # (1,B,N) -> (B,N)
-        context = context.squeeze(0)
-        output = self.out(torch.cat([output, context], 1))
+        # context = context.squeeze(0)
+        output = self.out(output) #torch.cat([output, context], 1))
         output = F.log_softmax(output, dim=1)
-        return output, hidden, attn_weights
+        return output, hidden, None #, attn_weights
 
 

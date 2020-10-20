@@ -67,30 +67,30 @@ class BatchLoader(object):
         """ Preprocess the data and convert to ids. """
         processed = []
         for d in data:
-            if d[9]:
-                # total += 1
-                tokens = d[2]
-                tokens = ['<ROOT>'] + tokens
-                # anonymize tokens
-                ss, se = d[3][0], d[3][-1]
-                os, oe = d[4][0], d[4][-1]
-                tokens[ss:se+1] = ['SUBJ'] * (se-ss+1)
-                tokens[os:oe+1] = ['OBJ'] * (oe-os+1)
-                tokens = map_to_ids(tokens, vocab.word2id)
-                deprel = map_to_ids(d[8], constant.DEPREL_TO_ID)
-                edge_index = d[7]
-                temp = edge_index[0]
-                edge_index[0] = edge_index[1]
-                edge_index[1] = temp
-                l = len(tokens)
-                subj_positions = get_positions(ss, se, l)
-                obj_positions = get_positions(os, oe, l)
-                relation = 0 if d[1] == 'not_causal' else 1
-                rule = map_to_ids(['<ROOT>'] + d[6], vocab.rule2id)
-                gold = map_to_ids([d[9]], constant.GOLD_TO_ID)
-                # if relation == 1:
-                #     pos += 1
-                processed += [(tokens, deprel, subj_positions, obj_positions, relation, edge_index, rule, gold)]
+            # total += 1
+            tokens = d[2]
+            tokens = ['<ROOT>'] + tokens
+            # anonymize tokens
+            ss, se = d[3][0], d[3][-1]
+            os, oe = d[4][0], d[4][-1]
+            tokens[ss:se+1] = ['SUBJ'] * (se-ss+1)
+            tokens[os:oe+1] = ['OBJ'] * (oe-os+1)
+            tokens = map_to_ids(tokens, vocab.word2id)
+            deprel = map_to_ids(d[8], constant.DEPREL_TO_ID)
+            edge_index = d[7]
+            temp = edge_index[0]
+            edge_index[0] = edge_index[1]
+            edge_index[1] = temp
+            l = len(tokens)
+            subj_positions = get_positions(ss, se, l)
+            obj_positions = get_positions(os, oe, l)
+            relation = 0 if d[1] == 'not_causal' else 1
+            rule = map_to_ids(d[6], vocab.rule2id) 
+            rule = [constant.ROOT_ID] + rule if len(rule)>0 else [constant.PAD_ID] + rule
+            gold = map_to_ids([d[9]], constant.GOLD_TO_ID)
+            # if relation == 1:
+            #     pos += 1
+            processed += [(tokens, deprel, subj_positions, obj_positions, relation, edge_index, rule, gold)]
         # print (pos, total)
         return processed
 

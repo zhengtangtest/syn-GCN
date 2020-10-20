@@ -138,14 +138,14 @@ for epoch in range(1, opt['num_epoch']+1):
             train_loss, dev_loss, dev_f1))
     file_logger.log("{}\t{:.6f}\t{:.6f}\t{:.4f}".format(epoch, train_loss, dev_loss, dev_f1))
 
-    # save
-    model_file = model_save_dir + '/checkpoint_epoch_{}.pt'.format(epoch)
-    model.save(model_file, epoch)
-    if epoch == 1 or dev_f1 > max(dev_f1_history):
-        copyfile(model_file, model_save_dir + '/best_model.pt')
-        print("new best model saved.")
-    if epoch % opt['save_epoch'] != 0:
-        os.remove(model_file)
+    # # save
+    # model_file = model_save_dir + '/checkpoint_epoch_{}.pt'.format(epoch)
+    # model.save(model_file, epoch)
+    # if epoch == 1 or dev_f1 > max(dev_f1_history):
+    #     copyfile(model_file, model_save_dir + '/best_model.pt')
+    #     print("new best model saved.")
+    # if epoch % opt['save_epoch'] != 0:
+    #     os.remove(model_file)
     
     # lr schedule
     if len(dev_f1_history) > 10 and dev_f1 <= dev_f1_history[-1] and \
