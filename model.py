@@ -62,9 +62,12 @@ class RelationModel(object):
         # if self.opt['cuda']:
         #         outputs = outputs.cuda()
         loss_d = 0
+        h0 = hidden[0].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
+        c0 = hidden[1].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
+        decoder_hidden = (h0, c0)
         for t in range(1, max_len):
-            output, hidden, attn_weights = self.decoder(
-                    output, masks, hidden, encoder_outputs)
+            output, decoder_hidden, attn_weights = self.decoder(
+                    output, masks, decoder_hidden, encoder_outputs)
             loss_d += self.criterion_d(output, rules[t])
             # outputs[t] = output
             # top1 = output.data.max(1)[1]
@@ -282,10 +285,10 @@ class Decoder(nn.Module):
 
         self.embed = nn.Embedding(self.output_size, self.embed_size)
         self.dropout = nn.Dropout(opt['dropout'], inplace=True)
-        self.attention = Attention(self.hidden_size, 2*opt['hidden_dim'], opt['attn_dim'])
+        self.attention = Attention(self.hidden_size, opt['hidden_dim'], opt['attn_dim'])
         self.rnn = nn.LSTM(self.embed_size, self.hidden_size,
-                          self.n_layers, dropout=opt['dropout'], bidirectional=True)
-        self.out = nn.Linear(2 * self.hidden_size, self.output_size)
+                          self.n_layers, dropout=opt['dropout'])
+        self.out = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, input, masks, last_hidden, encoder_outputs):
 
