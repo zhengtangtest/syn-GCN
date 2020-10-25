@@ -91,31 +91,31 @@ class BatchLoader(object):
                 rule = [constant.SOS_ID] + rule
             else:
                 rule = [constant.PAD_ID]
-            if self.opt['gat']:
-                deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
-            else:
-                deprel = map_to_ids([d for d in d['stanford_deprel'] if d!='ROOT' and d!='root'], constant.DEPREL_TO_ID)
-            
-            if opt['prune_k'] < 0:
-                edge_index = [[h-1 for h in d['stanford_head'] if h != 0], 
-                [i for i, h in enumerate(d['stanford_head']) if h != 0]]
-            else:
-                edge_index = prune_tree(l, d['stanford_head'], opt['prune_k'], list(range(ss, se+1)), list(range(os, oe+1)))
-                deprel = map_to_ids([d['stanford_deprel'][i] for i in edge_index[1]], constant.DEPREL_TO_ID)
-                if deprel[-1] == 2:
-                    deprel = deprel[:-1]
-                    edge_index = [edge_index[0][:-1], edge_index[1][:-1]]
-                edge_index = [edge_index[0]+edge_index[1], edge_index[1]+edge_index[0]]
-            edge_mask = [1 if i in edge_index[1] else 0 for i in range(l)]
-            relation = constant.LABEL_TO_ID[d['relation']]
-            if opt['pattn']:
-                subj_positions = get_positions(d['subj_start'], d['subj_end'], l)
-                obj_positions = get_positions(d['obj_start'], d['obj_end'], l)
-                processed += [(tokens, pos, ner, deprel, subj_positions, obj_positions, relation, edge_index, rule)]
-            else:
-                subj_mask = [1 if (i in range(ss, se+1) and i in edge_index[0]+edge_index[1]) else 0 for i in range(len(tokens))]
-                obj_mask = [1 if (i in range(os, oe+1) and i in edge_index[0]+edge_index[1]) else 0 for i in range(len(tokens))]
-                processed += [(tokens, pos, ner, deprel, subj_mask, obj_mask, relation, edge_index, edge_mask, rule)]
+                if self.opt['gat']:
+                    deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
+                else:
+                    deprel = map_to_ids([d for d in d['stanford_deprel'] if d!='ROOT' and d!='root'], constant.DEPREL_TO_ID)
+                
+                if opt['prune_k'] < 0:
+                    edge_index = [[h-1 for h in d['stanford_head'] if h != 0], 
+                    [i for i, h in enumerate(d['stanford_head']) if h != 0]]
+                else:
+                    edge_index = prune_tree(l, d['stanford_head'], opt['prune_k'], list(range(ss, se+1)), list(range(os, oe+1)))
+                    deprel = map_to_ids([d['stanford_deprel'][i] for i in edge_index[1]], constant.DEPREL_TO_ID)
+                    if deprel[-1] == 2:
+                        deprel = deprel[:-1]
+                        edge_index = [edge_index[0][:-1], edge_index[1][:-1]]
+                    edge_index = [edge_index[0]+edge_index[1], edge_index[1]+edge_index[0]]
+                edge_mask = [1 if i in edge_index[1] else 0 for i in range(l)]
+                relation = constant.LABEL_TO_ID[d['relation']]
+                if opt['pattn']:
+                    subj_positions = get_positions(d['subj_start'], d['subj_end'], l)
+                    obj_positions = get_positions(d['obj_start'], d['obj_end'], l)
+                    processed += [(tokens, pos, ner, deprel, subj_positions, obj_positions, relation, edge_index, rule)]
+                else:
+                    subj_mask = [1 if (i in range(ss, se+1) and i in edge_index[0]+edge_index[1]) else 0 for i in range(len(tokens))]
+                    obj_mask = [1 if (i in range(os, oe+1) and i in edge_index[0]+edge_index[1]) else 0 for i in range(len(tokens))]
+                    processed += [(tokens, pos, ner, deprel, subj_mask, obj_mask, relation, edge_index, edge_mask, rule)]
         
         return processed
 
