@@ -448,6 +448,7 @@ class Decoder(nn.Module):
     def forward(self, input, masks, last_hidden, encoder_outputs):
 
         # Get the embedding of the current input word (last output word)
+        print (input.get_device())
         embedded = self.embed(input).unsqueeze(0)  # (1,B,N)
         embedded = self.dropout(embedded)
 
