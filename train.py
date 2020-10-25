@@ -97,6 +97,7 @@ opt['num_class'] = len(constant.LABEL_TO_ID)
 vocab_file = opt['vocab_dir'] + '/vocab.pkl'
 vocab = Vocab(vocab_file, load=True)
 opt['vocab_size'] = vocab.size
+opt['rule_size'] = len(vocab.id2rule)
 emb_file = opt['vocab_dir'] + '/embedding.npy'
 emb_matrix = np.load(emb_file)
 assert emb_matrix.shape[0] == vocab.size
@@ -104,9 +105,8 @@ assert emb_matrix.shape[1] == opt['emb_dim']
 
 # load data
 print("Loading data from {} with batch size {}...".format(opt['data_dir'], opt['batch_size']))
-train_batch = BatchLoader(opt['data_dir'] + '/train.json', opt['batch_size'], opt, vocab, evaluation=False)
-dev_batch = BatchLoader(opt['data_dir'] + '/dev.json', opt['batch_size'], opt, vocab, evaluation=True)
-
+train_batch = BatchLoader(opt['data_dir'] + '/train.json', opt['batch_size'], opt, vocab, 'tacred/mappings_train.txt', evaluation=False)
+dev_batch = BatchLoader(opt['data_dir'] + '/dev.json', opt['batch_size'], opt, vocab, 'tacred/mappings_dev.txt', evaluation=True)
 model_id = opt['id'] if len(opt['id']) > 1 else '0' + opt['id']
 model_save_dir = opt['save_dir'] + '/' + model_id
 opt['model_save_dir'] = model_save_dir

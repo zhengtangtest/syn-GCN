@@ -5,6 +5,10 @@ Helper functions.
 import os
 import json
 import argparse
+import re
+
+def word_tokenize(text):
+    return re.findall(r"[\w]+|[^\w\s,]",text)
 
 ### IO
 def check_dir(d):

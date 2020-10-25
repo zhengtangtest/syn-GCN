@@ -55,7 +55,7 @@ class Vocab(object):
         if load:
             assert os.path.exists(filename), "Vocab file does not exist at " + filename
             # load from file and ignore all other params
-            self.id2word, self.word2id = self.load(filename)
+            self.id2word, self.word2id, self.id2rule, self.rule2id = self.load(filename)
             self.size = len(self.id2word)
             print("Vocab size {} loaded from file".format(self.size))
         else:
@@ -75,9 +75,10 @@ class Vocab(object):
 
     def load(self, filename):
         with open(filename, 'rb') as infile:
-            id2word = pickle.load(infile)
+            id2word, id2rule = pickle.load(infile)
             word2id = dict([(id2word[idx], idx) for idx in range(len(id2word))])
-        return id2word, word2id
+            rule2id = dict([(id2rule[idx], idx) for idx in range(len(id2rule))])
+        return id2word, word2id, id2rule, rule2id
 
     def save(self, filename):
         #assert not os.path.exists(filename), "Cannot save vocab: file exists at " + filename

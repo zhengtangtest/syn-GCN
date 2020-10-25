@@ -15,11 +15,12 @@ class BatchLoader(object):
     """
     Load data from json files, preprocess and prepare batches.
     """
-    def __init__(self, filename, batch_size, opt, vocab, evaluation=False):
+    def __init__(self, filename, batch_size, opt, vocab, mappings, evaluation=False):
         self.batch_size = batch_size
         self.vocab = vocab
         self.eval = evaluation
         self.opt = opt
+        self.mappings = mappings
 
         with open(filename) as infile:
             data = json.load(infile)
@@ -36,7 +37,7 @@ class BatchLoader(object):
         datalist = list()
         for i, batch in enumerate(data):
             batch = list(zip(*batch))
-            assert len(batch) == 9
+            assert len(batch) == 10
             
             # word dropout
             if not self.eval:
@@ -52,12 +53,13 @@ class BatchLoader(object):
             subj_masks = get_long_tensor(batch[4])
             obj_masks = get_long_tensor(batch[5])
             e_masks = get_long_tensor(batch[8])
+            rules = get_long_tensor(batch[9])
             for i in range(len(words)):
                 datalist += [Data(words=words[i], mask=torch.eq(words[i], 0), e_mask = torch.eq(e_masks[i], 0), pos=pos[i], 
                     ner=ner[i], deprel=deprel[i], d_mask=torch.eq(deprel[i], 0), 
                     subj_mask=torch.eq(subj_masks[i], 0), obj_mask=torch.eq(obj_masks[i], 0), 
                     edge_index=torch.LongTensor(batch[7][i]),
-                    rel=torch.LongTensor([batch[6][i]]))]
+                    rel=torch.LongTensor([batch[6][i]]), rule=rules[i])]
 
         self.data = DataLoader(datalist, batch_size=batch_size)
 
@@ -66,11 +68,16 @@ class BatchLoader(object):
     def preprocess(self, data, vocab, opt):
         """ Preprocess the data and convert to ids. """
         processed = []
+        with open(self.mappings) as f:
+            mappings = f.readlines()
+        with open('tacred/rules.json') as f:
+            rules = json.load(f)
         for c, d in enumerate(data):
             tokens = d['token']
             if opt['lower']:
                 tokens = [t.lower() for t in tokens]
             l = len(tokens)
+            print (' '.join(tokens))
             # anonymize tokens
             ss, se = d['subj_start'], d['subj_end']
             os, oe = d['obj_start'], d['obj_end']
@@ -79,6 +86,12 @@ class BatchLoader(object):
             tokens = map_to_ids(tokens, vocab.word2id)
             pos = map_to_ids(d['stanford_pos'], constant.POS_TO_ID)
             ner = map_to_ids(d['stanford_ner'], constant.NER_TO_ID)
+            if 't_' in mappings[c] or 's_' in mappings[c]:
+                rule = helper.word_tokenize(rules[eval(mappings[c])[0][1]])
+                rule = map_to_ids(rule, vocab.rule2id) 
+                rule = [constant.SOS_ID] + rule
+            else:
+                rule = [constant.PAD_ID]
             if self.opt['gat']:
                 deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
             else:
@@ -99,11 +112,11 @@ class BatchLoader(object):
             if opt['pattn']:
                 subj_positions = get_positions(d['subj_start'], d['subj_end'], l)
                 obj_positions = get_positions(d['obj_start'], d['obj_end'], l)
-                processed += [(tokens, pos, ner, deprel, subj_positions, obj_positions, relation, edge_index)]
+                processed += [(tokens, pos, ner, deprel, subj_positions, obj_positions, relation, edge_index, rule)]
             else:
                 subj_mask = [1 if (i in range(ss, se+1) and i in edge_index[0]+edge_index[1]) else 0 for i in range(len(tokens))]
                 obj_mask = [1 if (i in range(os, oe+1) and i in edge_index[0]+edge_index[1]) else 0 for i in range(len(tokens))]
-                processed += [(tokens, pos, ner, deprel, subj_mask, obj_mask, relation, edge_index, edge_mask)]
+                processed += [(tokens, pos, ner, deprel, subj_mask, obj_mask, relation, edge_index, edge_mask, rule)]
         
         return processed
 

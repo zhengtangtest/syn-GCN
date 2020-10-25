@@ -17,7 +17,9 @@ class RelationModel(object):
     def __init__(self, opt, emb_matrix=None):
         self.opt = opt
         self.model = SynGCN(opt, emb_matrix)
+        self.decoder = Decoder(opt)
         self.criterion = nn.CrossEntropyLoss()
+        self.criterion_d = nn.NLLLoss(ignore_index=constant.PAD_ID)
         self.parameters = [p for p in self.model.parameters() if p.requires_grad]
         if opt['cuda']:
             self.model.cuda()
@@ -31,20 +33,48 @@ class RelationModel(object):
             for b in constant.KEYS:
                 inputs += [batch[b].cuda()]
             labels = batch.rel.cuda()
+            rules = batch.rule.cuda()
         else:
             for b in constant.KEYS:
                 inputs += [batch[b]]
             labels = batch.rel
+            rules = batch.rule
         batch_size = labels.size(0)
         # step forward
         self.model.train()
+        self.decoder.train()
         self.optimizer.zero_grad()
-        logits, pooling_output = self.model(inputs, batch_size)
+        logits, hidden, pooling_output = self.model(inputs, batch_size)
         loss = self.criterion(logits, labels)
         if self.opt.get('conv_l2', 0) > 0:
             loss += self.model.conv_l2() * self.opt['conv_l2']
         if self.opt.get('pooling_l2', 0) > 0:
             loss += self.opt['pooling_l2'] * (pooling_output ** 2).sum(1).mean()
+        
+        #DECODER PART
+        rules = rules.view(batch_size, -1)
+        masks = inputs[1]
+        max_len = rules.size(1)
+        rules = rules.transpose(1,0)
+        output = rules.data[0, :] # sos
+        # outputs = torch.zeros(max_len, batch_size, self.opt['rule_size'])
+        # if self.opt['cuda']:
+        #         outputs = outputs.cuda()
+        loss_d = 0
+        h0 = hidden[0].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
+        c0 = hidden[1].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
+        decoder_hidden = (h0, c0)
+        for t in range(1, max_len):
+            output, decoder_hidden, attn_weights = self.decoder(
+                    output, masks, decoder_hidden, pooling_output)
+            loss_d += self.criterion_d(output, rules[t])
+            # outputs[t] = output
+            # top1 = output.data.max(1)[1]
+            output = rules.data[t]
+            if self.opt['cuda']:
+                output = output.cuda()
+        loss += loss_d
+
         # backward
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt['max_grad_norm'])
@@ -68,7 +98,7 @@ class RelationModel(object):
 
         # forward
         self.model.eval()
-        logits, _ = self.model(inputs, batch_size)
+        logits, hidden, pooling_output = self.model(inputs, batch_size)
         loss = self.criterion(logits, labels)
         probs = F.softmax(logits, dim=1).data.cpu().numpy().tolist()
         predictions = np.argmax(logits.data.cpu().numpy(), axis=1).tolist()
@@ -282,7 +312,7 @@ class SynGCN(nn.Module):
 
         final_hidden = self.out_mlp(final_hidden)
         logits = self.linear(final_hidden)
-        return logits, h_out
+        return logits, (ht, ct), h_out
 
 class Attention(nn.Module):
     """
@@ -399,3 +429,38 @@ def pool(h, mask, type='max'):
     else:
         h = h.masked_fill(mask, 0)
         return h.sum(1)
+
+class Decoder(nn.Module):
+    def __init__(self, opt):
+        super(Decoder, self).__init__()
+        self.embed_size = opt['emb_dim']
+        self.hidden_size = opt['hidden_dim']
+        self.output_size = opt['rule_size']
+        self.n_layers = opt['num_layers']
+
+        self.embed = nn.Embedding(self.output_size, self.embed_size)
+        self.dropout = nn.Dropout(opt['dropout'], inplace=True)
+        self.attention = Attention(self.hidden_size, opt['hidden_dim'])
+        self.rnn = nn.LSTM(self.embed_size, self.hidden_size,
+                          self.n_layers, dropout=opt['dropout'])
+        self.out = nn.Linear(self.hidden_size, self.output_size)
+
+    def forward(self, input, masks, last_hidden, encoder_outputs):
+
+        # Get the embedding of the current input word (last output word)
+        embedded = self.embed(input).unsqueeze(0)  # (1,B,N)
+        embedded = self.dropout(embedded)
+
+        # batch_size = encoder_outputs.size(0)
+        # # Calculate attention weights and apply to encoder outputs
+        # attn_weights = self.attention(encoder_outputs, masks, last_hidden[0].view(2, batch_size,-1)[-1])
+        # context = attn_weights.bmm(encoder_outputs.transpose(0, 1))  # (B,1,N)
+        # context = context.transpose(0, 1)  # (1,B,N)
+        # # Combine embedded input word and attended context, run through RNN
+        rnn_input = embedded #torch.cat([embedded, context], 2)
+        output, hidden = self.rnn(rnn_input, last_hidden)
+        output = output.squeeze(0)  # (1,B,N) -> (B,N)
+        # context = context.squeeze(0)
+        output = self.out(output) #torch.cat([output, context], 1))
+        output = F.log_softmax(output, dim=1)
+        return output, hidden, None #, attn_weights
