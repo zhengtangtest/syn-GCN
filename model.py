@@ -23,7 +23,9 @@ class RelationModel(object):
         self.parameters = [p for p in self.model.parameters() if p.requires_grad]
         if opt['cuda']:
             self.model.cuda()
+            self.decoder.cuda()
             self.criterion.cuda()
+            self.criterion_d.cuda()
         self.optimizer = torch_utils.get_optimizer(opt['optim'], self.parameters, opt['lr'])
     
     def update(self, batch):
@@ -438,7 +440,7 @@ class Decoder(nn.Module):
         self.output_size = opt['rule_size']
         self.n_layers = opt['num_layers']
 
-        self.embed = nn.Embedding(self.output_size, self.embed_size)
+        self.embed = nn.Embedding(self.output_size, self.embed_size, padding_idx=constant.PAD_ID)
         self.dropout = nn.Dropout(opt['dropout'], inplace=True)
         self.attention = Attention(self.hidden_size, opt['hidden_dim'])
         self.rnn = nn.LSTM(self.embed_size, self.hidden_size,
@@ -448,7 +450,6 @@ class Decoder(nn.Module):
     def forward(self, input, masks, last_hidden, encoder_outputs):
 
         # Get the embedding of the current input word (last output word)
-        print (input.is_cuda)
         embedded = self.embed(input).unsqueeze(0)  # (1,B,N)
         embedded = self.dropout(embedded)
 
