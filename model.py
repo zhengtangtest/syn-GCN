@@ -55,7 +55,6 @@ class RelationModel(object):
         if self.opt.get('pooling_l2', 0) > 0:
             loss += self.opt['pooling_l2'] * (pooling_output ** 2).sum(1).mean()
         if rule:
-            print (rules.size())
             #DECODER PART
             rules = rules.view(batch_size, -1)
             masks = inputs[1]
