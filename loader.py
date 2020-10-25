@@ -77,7 +77,6 @@ class BatchLoader(object):
             if opt['lower']:
                 tokens = [t.lower() for t in tokens]
             l = len(tokens)
-            print (' '.join(tokens))
             # anonymize tokens
             ss, se = d['subj_start'], d['subj_end']
             os, oe = d['obj_start'], d['obj_end']
