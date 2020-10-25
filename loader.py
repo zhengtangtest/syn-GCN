@@ -85,12 +85,12 @@ class BatchLoader(object):
             tokens = map_to_ids(tokens, vocab.word2id)
             pos = map_to_ids(d['stanford_pos'], constant.POS_TO_ID)
             ner = map_to_ids(d['stanford_ner'], constant.NER_TO_ID)
-            if 't_' in mappings[c] or 's_' in mappings[c]:
+            if 't_' not in mappings[c] and 's_' not in mappings[c]:
+                rule = [constant.PAD_ID]
+            else:
                 rule = helper.word_tokenize(rules[eval(mappings[c])[0][1]])
                 rule = map_to_ids(rule, vocab.rule2id) 
                 rule = [constant.SOS_ID] + rule
-            else:
-                rule = [constant.PAD_ID]
                 if self.opt['gat']:
                     deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
                 else:
