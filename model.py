@@ -28,19 +28,21 @@ class RelationModel(object):
             self.criterion_d.cuda()
         self.optimizer = torch_utils.get_optimizer(opt['optim'], self.parameters, opt['lr'])
     
-    def update(self, batch):
+    def update(self, batch, rule):
         """ Run a step of forward and backward model update. """
         inputs = list()
         if self.opt['cuda']:
             for b in constant.KEYS:
                 inputs += [batch[b].cuda()]
             labels = batch.rel.cuda()
-            rules = batch.rule.cuda()
+            if rule:
+                rules = batch.rule.cuda()
         else:
             for b in constant.KEYS:
                 inputs += [batch[b]]
             labels = batch.rel
-            rules = batch.rule
+            if rule:
+                rules = batch.rule
         batch_size = labels.size(0)
         # step forward
         self.model.train()
@@ -52,30 +54,31 @@ class RelationModel(object):
             loss += self.model.conv_l2() * self.opt['conv_l2']
         if self.opt.get('pooling_l2', 0) > 0:
             loss += self.opt['pooling_l2'] * (pooling_output ** 2).sum(1).mean()
-        
-        #DECODER PART
-        # rules = rules.view(batch_size, -1)
-        # masks = inputs[1]
-        # max_len = rules.size(1)
-        # rules = rules.transpose(1,0)
-        # output = rules.data[0, :] # sos
-        # # outputs = torch.zeros(max_len, batch_size, self.opt['rule_size'])
-        # # if self.opt['cuda']:
-        # #         outputs = outputs.cuda()
-        # loss_d = 0
-        # h0 = hidden[0].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
-        # c0 = hidden[1].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
-        # decoder_hidden = (h0, c0)
-        # for t in range(1, max_len):
-        #     output, decoder_hidden, attn_weights = self.decoder(
-        #             output, masks, decoder_hidden, pooling_output)
-        #     loss_d += self.criterion_d(output, rules[t])
-        #     # outputs[t] = output
-        #     # top1 = output.data.max(1)[1]
-        #     output = rules.data[t]
-        #     if self.opt['cuda']:
-        #         output = output.cuda()
-        # loss += loss_d
+        if rule:
+            print (rules.size())
+            #DECODER PART
+            rules = rules.view(batch_size, -1)
+            masks = inputs[1]
+            max_len = rules.size(1)
+            rules = rules.transpose(1,0)
+            output = rules.data[0, :] # sos
+            # outputs = torch.zeros(max_len, batch_size, self.opt['rule_size'])
+            # if self.opt['cuda']:
+            #         outputs = outputs.cuda()
+            loss_d = 0
+            h0 = hidden[0].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
+            c0 = hidden[1].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
+            decoder_hidden = (h0, c0)
+            for t in range(1, max_len):
+                output, decoder_hidden, attn_weights = self.decoder(
+                        output, masks, decoder_hidden, pooling_output)
+                loss_d += self.criterion_d(output, rules[t])
+                # outputs[t] = output
+                # top1 = output.data.max(1)[1]
+                output = rules.data[t]
+                if self.opt['cuda']:
+                    output = output.cuda()
+            loss += loss_d
 
         # backward
         loss.backward()

@@ -139,7 +139,16 @@ for epoch in range(1, opt['num_epoch']+1):
     for batch in train_batch.data:
         start_time = time.time()
         global_step += 1
-        loss = model.update(batch)
+        loss = model.update(batch, False)
+        train_loss += loss
+        if global_step % opt['log_step'] == 0:
+            duration = time.time() - start_time
+            print(format_str.format(datetime.now(), global_step, max_steps, epoch,\
+                    opt['num_epoch'], loss, duration, current_lr))
+    for batch in train_batch.data_r:
+        start_time = time.time()
+        global_step += 1
+        loss = model.update(batch, True)
         train_loss += loss
         if global_step % opt['log_step'] == 0:
             duration = time.time() - start_time
@@ -151,6 +160,10 @@ for epoch in range(1, opt['num_epoch']+1):
     predictions = []
     dev_loss = 0
     for batch in dev_batch.data:
+        preds, _, loss = model.predict(batch)
+        predictions += preds
+        dev_loss += loss
+    for batch in dev_batch.data_r:
         preds, _, loss = model.predict(batch)
         predictions += preds
         dev_loss += loss
