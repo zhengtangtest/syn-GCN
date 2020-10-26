@@ -29,7 +29,7 @@ class BatchLoader(object):
         data_r = sorted(data_r, key=lambda d: len(d[0]), reverse=True)
         
         id2label = dict([(v,k) for k,v in constant.LABEL_TO_ID.items()])
-        self.labels = [id2label[d[6]] for d in data] + [id2label[d[6]] for d in data_r]
+        self.labels = [id2label[d[6]] for d in data_r]
         self.num_examples = len(data)
 
         datalist = self.chuck_batch(data, False)
