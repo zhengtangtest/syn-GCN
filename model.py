@@ -61,6 +61,7 @@ class RelationModel(object):
             rules = rules.view(batch_size, -1)
             masks = inputs[1]
             max_len = rules.size(1)
+            print (max_len)
             rules = rules.transpose(1,0)
             output = rules.data[0, :] # sos
             # outputs = torch.zeros(max_len, batch_size, self.opt['rule_size'])
