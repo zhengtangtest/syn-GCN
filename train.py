@@ -169,7 +169,7 @@ for epoch in range(1, opt['num_epoch']+1):
         dev_loss += loss
         batch_size = len(preds)
         rules = batch.rule.view(batch_size, -1)
-        for i in batch_size:
+        for i in range(batch_size):
             output = outputs.transpose(0, 1)[i]
             print ([vocab.id2rule[int(r)] for r in rules[i].tolist()])
             print ([vocab.id2rule[int(r)] for r in output.tolist()])
