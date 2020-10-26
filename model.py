@@ -127,7 +127,7 @@ class RelationModel(object):
                 output = topi.view(-1)
                 outputs[t] = output
 
-        return predictions, probs, outputs, loss.data.item()
+        return predictions, probs, loss.data.item()
 
     def update_lr(self, new_lr):
         torch_utils.change_lr(self.optimizer, new_lr)
