@@ -106,7 +106,7 @@ class RelationModel(object):
         loss = self.criterion(logits, labels)
         probs = F.softmax(logits, dim=1).data.cpu().numpy().tolist()
         predictions = np.argmax(logits.data.cpu().numpy(), axis=1).tolist()
-
+        outputs = None
         if rule:
             #DECODER PART
             masks = inputs[1]
