@@ -167,7 +167,7 @@ for epoch in range(1, opt['num_epoch']+1):
         preds, _, outputs, loss = model.predict(batch, True)
         predictions += preds
         dev_loss += loss
-        batch_size = preds.size(0)
+        batch_size = len(preds)
         print (batch_size)
         rules = batch.rule.view(batch_size, -1)
         for i in rules.size(1):
