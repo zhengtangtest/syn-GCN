@@ -124,7 +124,8 @@ class RelationModel(object):
                 output, decoder_hidden, attn_weights = self.decoder(
                         output, masks, decoder_hidden, pooling_output)
                 topv, topi = output.data.topk(1)
-                print (topi)
+                print (topi.size())
+                print (outputs.size())
                 outputs[t] = topi
                 output = topi
 
