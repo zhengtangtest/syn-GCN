@@ -29,7 +29,6 @@ class RelationModel(object):
             self.criterion.cuda()
             self.criterion_d.cuda()
         self.optimizer = torch_utils.get_optimizer(opt['optim'], self.parameters, opt['lr'])
-        self.optimizer_d = torch_utils.get_optimizer(opt['optim'], self.parameters, 0.001)
     
     def update(self, batch, rule):
         """ Run a step of forward and backward model update. """
@@ -80,15 +79,13 @@ class RelationModel(object):
                 output = rules.data[t]
                 if self.opt['cuda']:
                     output = output.cuda()
-            loss_d.backward()
-            torch.nn.utils.clip_grad_norm_(self.decoder.parameters(), self.opt['max_grad_norm'])
-            self.optimizer_d.step()
+            loss += loss_d
 
         # backward
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt['max_grad_norm'])
         self.optimizer.step()
-        loss_val = loss.data.item() + loss_d.data.item() if rule else loss.data.item()
+        loss_val = loss.data.item()
         return loss_val
 
     def predict(self, batch, rule):
