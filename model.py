@@ -82,7 +82,7 @@ class RelationModel(object):
                     output = output.cuda()
             loss_d.backward()
             torch.nn.utils.clip_grad_norm_(self.decoder.parameters(), self.opt['max_grad_norm'])
-            self.self.optimizer_d.step()
+            self.optimizer_d.step()
 
         # backward
         loss.backward()
