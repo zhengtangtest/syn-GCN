@@ -14,6 +14,8 @@ from model import RelationModel
 from utils import scorer, constant, helper
 from utils.vocab import Vocab
 
+from nltk.translate.bleu_score import corpus_bleu
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir', type=str, default='dataset/tacred')
 parser.add_argument('--vocab_dir', type=str, default='dataset/vocab')
@@ -159,6 +161,8 @@ for epoch in range(1, opt['num_epoch']+1):
     print("Evaluating on dev set...")
     predictions = []
     dev_loss = 0
+    references = []
+    candidates = []
     for batch in dev_batch.data:
         preds, _, _, loss = model.predict(batch, False)
         predictions += preds
@@ -171,16 +175,16 @@ for epoch in range(1, opt['num_epoch']+1):
         rules = batch.rule.view(batch_size, -1)
         for i in range(batch_size):
             output = outputs.transpose(0, 1)[i]
-            print ([vocab.id2rule[int(r)] for r in rules[i].tolist()])
-            print ([vocab.id2rule[int(r)] for r in output.tolist()])
+            references += [[[vocab.id2rule[int(r)] for r in rules[i].tolist()]]]
+            candidates += [[vocab.id2rule[int(r)] for r in output.tolist()]]
     predictions = [id2label[p] for p in predictions]
     dev_p, dev_r, dev_f1 = scorer.score(dev_batch.gold(), predictions)
-    
+    bleu = corpus_bleu(references, candidates)
     train_loss = train_loss / train_batch.num_examples * opt['batch_size'] # avg loss per batch
     dev_loss = dev_loss / dev_batch.num_examples * opt['batch_size']
     epoch_duration = time.time() - epoch_start_time
-    print("epoch {}: train_loss = {:.6f}, dev_loss = {:.6f}, dev_f1 = {:.4f}, time = {:.3f} sec".format(epoch,\
-            train_loss, dev_loss, dev_f1, epoch_duration))
+    print("epoch {}: train_loss = {:.6f}, dev_loss = {:.6f}, dev_f1 = {:.4f}, bleu = {:.4f}, time = {:.3f} sec".format(epoch,\
+            train_loss, dev_loss, dev_f1, bleu, epoch_duration))
     file_logger.log("{}\t{:.6f}\t{:.6f}\t{:.4f}".format(epoch, train_loss, dev_loss, dev_f1))
     # save
     model_file = model_save_dir + '/checkpoint_epoch_{}.pt'.format(epoch)
