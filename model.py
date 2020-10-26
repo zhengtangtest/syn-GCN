@@ -12,6 +12,8 @@ from utils import constant, torch_utils
 
 from torch_geometric.nn import GCNConv, RGCNConv, GATConv
 
+from torch.autograd import Variable
+
 class RelationModel(object):
     """ A wrapper class for the training and evaluation of models. """
     def __init__(self, opt, emb_matrix=None):
