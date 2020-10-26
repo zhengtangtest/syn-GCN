@@ -112,7 +112,7 @@ class RelationModel(object):
         if rule:
             #DECODER PART
             masks = inputs[1]
-            output = Variable(torch.LongTensor([SOS_token] * batch_size)) # sos
+            output = Variable(torch.LongTensor([constant.SOS_ID] * batch_size)) # sos
             output = output.cuda() if self.opt['cuda'] else output
             outputs = torch.zeros(50, batch_size)
             if self.opt['cuda']:
