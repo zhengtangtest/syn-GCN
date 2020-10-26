@@ -63,6 +63,7 @@ class RelationModel(object):
             max_len = rules.size(1)
             rules = rules.transpose(1,0)
             output = rules.data[0, :] # sos
+            print (output.size())
             # outputs = torch.zeros(max_len, batch_size, self.opt['rule_size'])
             # if self.opt['cuda']:
             #         outputs = outputs.cuda()
@@ -126,7 +127,7 @@ class RelationModel(object):
                 topv, topi = output.data.topk(1)
                 print (topi.size())
                 print (outputs.size())
-                outputs[t] = topi
+                outputs[t] = topi.view(-1)
                 output = topi
 
         return predictions, probs, outputs, loss.data.item()
