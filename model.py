@@ -61,7 +61,6 @@ class RelationModel(object):
             rules = rules.view(batch_size, -1)
             masks = inputs[1]
             max_len = rules.size(1)
-            print (max_len)
             rules = rules.transpose(1,0)
             output = rules.data[0, :] # sos
             # outputs = torch.zeros(max_len, batch_size, self.opt['rule_size'])
@@ -115,13 +114,13 @@ class RelationModel(object):
             masks = inputs[1]
             output = Variable(torch.LongTensor([constant.SOS_ID] * batch_size)) # sos
             output = output.cuda() if self.opt['cuda'] else output
-            outputs = torch.zeros(50, batch_size)
+            outputs = torch.zeros(80, batch_size)
             if self.opt['cuda']:
                     outputs = outputs.cuda()
             h0 = hidden[0].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
             c0 = hidden[1].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
             decoder_hidden = (h0, c0)
-            for t in range(1, 50):
+            for t in range(1, 80):
                 output, decoder_hidden, attn_weights = self.decoder(
                         output, masks, decoder_hidden, pooling_output)
                 topv, topi = output.data.topk(1)
