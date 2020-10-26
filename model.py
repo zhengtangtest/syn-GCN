@@ -124,8 +124,9 @@ class RelationModel(object):
                 output, decoder_hidden, attn_weights = self.decoder(
                         output, masks, decoder_hidden, pooling_output)
                 topv, topi = output.data.topk(1)
-                outputs[t] = torch.cat(topi)
-                output = torch.cat(topi)
+                print (topi)
+                outputs[t] = topi
+                output = topi
 
         return predictions, probs, outputs, loss.data.item()
 
