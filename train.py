@@ -169,7 +169,7 @@ for epoch in range(1, opt['num_epoch']+1):
         dev_loss += loss
         for output in outputs.transpose(0, 1):
             print ([r for r in output.tolist()])
-            print ([vocab.id2rule[r] for r in output.tolist()])
+            print ([vocab.id2rule[int(r)] for r in output.tolist()])
     predictions = [id2label[p] for p in predictions]
     dev_p, dev_r, dev_f1 = scorer.score(dev_batch.gold(), predictions)
     
