@@ -86,7 +86,7 @@ class RelationModel(object):
         loss_val = loss.data.item()
         return loss_val
 
-    def predict(self, batch):
+    def predict(self, batch, rule):
         """ Run forward prediction. If unsort is True, recover the original order of the batch. """
         inputs = list()
         if self.opt['cuda']:
@@ -107,7 +107,25 @@ class RelationModel(object):
         probs = F.softmax(logits, dim=1).data.cpu().numpy().tolist()
         predictions = np.argmax(logits.data.cpu().numpy(), axis=1).tolist()
 
-        return predictions, probs, loss.data.item()
+        if rule:
+            #DECODER PART
+            masks = inputs[1]
+            output = Variable(torch.LongTensor([SOS_token] * batch_size)) # sos
+            output = output.cuda() if self.opt['cuda'] else output
+            outputs = torch.zeros(50, batch_size)
+            if self.opt['cuda']:
+                    outputs = outputs.cuda()
+            h0 = hidden[0].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
+            c0 = hidden[1].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
+            decoder_hidden = (h0, c0)
+            for t in range(1, 50):
+                output, decoder_hidden, attn_weights = self.decoder(
+                        output, masks, decoder_hidden, pooling_output)
+                topv, topi = output.data.topk(1)
+                outputs[t] = torch.cat(topi)
+                output = torch.cat(topi)
+
+        return predictions, probs, outputs, loss.data.item()
 
     def update_lr(self, new_lr):
         torch_utils.change_lr(self.optimizer, new_lr)

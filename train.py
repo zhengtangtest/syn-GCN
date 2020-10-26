@@ -160,13 +160,14 @@ for epoch in range(1, opt['num_epoch']+1):
     predictions = []
     dev_loss = 0
     for batch in dev_batch.data:
-        preds, _, loss = model.predict(batch)
+        preds, outputs, _, loss = model.predict(batch, False)
         predictions += preds
         dev_loss += loss
     for batch in dev_batch.data_r:
-        preds, _, loss = model.predict(batch)
+        preds, outputs, _, loss = model.predict(batch, True)
         predictions += preds
         dev_loss += loss
+    print (outputs)
     predictions = [id2label[p] for p in predictions]
     dev_p, dev_r, dev_f1 = scorer.score(dev_batch.gold(), predictions)
     
