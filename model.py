@@ -115,6 +115,7 @@ class RelationModel(object):
             output = Variable(torch.LongTensor([constant.SOS_ID] * batch_size)) # sos
             output = output.cuda() if self.opt['cuda'] else output
             outputs = torch.zeros(80, batch_size)
+            outputs[0] = output
             if self.opt['cuda']:
                     outputs = outputs.cuda()
             h0 = hidden[0].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
