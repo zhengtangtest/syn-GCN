@@ -67,7 +67,7 @@ parser.set_defaults(sgcn=False)
 
 parser.add_argument('--lr', type=float, default=1.0, help='Applies to SGD and Adagrad.')
 parser.add_argument('--lr_decay', type=float, default=0.9)
-parser.add_argument('--optim', type=str, default='sgd', help='sgd, adagrad, adam or adamax.')
+parser.add_argument('--optim', type=str, default='adam', help='sgd, adagrad, adam or adamax.')
 parser.add_argument('--num_epoch', type=int, default=100)
 parser.add_argument('--batch_size', type=int, default=64)
 parser.add_argument('--max_grad_norm', type=float, default=5.0, help='Gradient clipping.')
@@ -177,7 +177,6 @@ for epoch in range(1, opt['num_epoch']+1):
             output = outputs.transpose(0, 1)[i]
             reference = [[vocab.id2rule[int(r)] for r in rules[i].tolist()]]
             candidate = [vocab.id2rule[int(r)] for r in output.tolist()]
-            print (sentence_bleu(reference, candidate))
             references.append(reference)
             candidates.append(candidate)
     predictions = [id2label[p] for p in predictions]

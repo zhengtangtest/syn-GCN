@@ -85,6 +85,7 @@ class RelationModel(object):
         # backward
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt['max_grad_norm'])
+        torch.nn.utils.clip_grad_norm_(self.decoder.parameters(), self.opt['max_grad_norm'])
         self.optimizer.step()
         loss_val = loss.data.item()
         return loss_val
