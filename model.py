@@ -51,7 +51,7 @@ class RelationModel(object):
         self.decoder.train()
         self.optimizer.zero_grad()
         loss = 0
-        logits, hidden, pooling_output = self.model(inputs, batch_size)
+        logits, hidden, pooling_output, encoder_outputs = self.model(inputs, batch_size)
         # loss = self.criterion(logits, labels)
         # if self.opt.get('conv_l2', 0) > 0:
         #     loss += self.model.conv_l2() * self.opt['conv_l2']
@@ -74,7 +74,7 @@ class RelationModel(object):
             decoder_hidden = (h0, c0)
             for t in range(1, max_len):
                 output, decoder_hidden, attn_weights = self.decoder(
-                        output, masks, decoder_hidden, pooling_output)
+                        output, masks, decoder_hidden, encoder_outputs)
                 loss_d += self.criterion_d(output, rules[t])
                 # outputs[t] = output
                 # top1 = output.data.max(1)[1]
@@ -108,7 +108,7 @@ class RelationModel(object):
         # forward
         self.model.eval()
         self.decoder.eval()
-        logits, hidden, pooling_output = self.model(inputs, batch_size)
+        logits, hidden, pooling_output, encoder_outputs = self.model(inputs, batch_size)
         loss = self.criterion(logits, labels)
         probs = F.softmax(logits, dim=1).data.cpu().numpy().tolist()
         predictions = np.argmax(logits.data.cpu().numpy(), axis=1).tolist()
@@ -127,7 +127,7 @@ class RelationModel(object):
             decoder_hidden = (h0, c0)
             for t in range(1, 80):
                 output, decoder_hidden, attn_weights = self.decoder(
-                        output, masks, decoder_hidden, pooling_output)
+                        output, masks, decoder_hidden, encoder_outputs)
                 topv, topi = output.data.topk(1)
                 output = topi.view(-1)
                 outputs[t] = output
@@ -341,7 +341,7 @@ class SynGCN(nn.Module):
 
         final_hidden = self.out_mlp(final_hidden)
         logits = self.linear(final_hidden)
-        return logits, (ht, ct), h_out
+        return logits, (ht, ct), h_out, outputs
 
 class Attention(nn.Module):
     """
