@@ -50,6 +50,7 @@ class RelationModel(object):
         self.model.train()
         self.decoder.train()
         self.optimizer.zero_grad()
+        loss = 0
         logits, hidden, pooling_output = self.model(inputs, batch_size)
         # loss = self.criterion(logits, labels)
         # if self.opt.get('conv_l2', 0) > 0:
