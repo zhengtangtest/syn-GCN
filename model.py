@@ -64,6 +64,7 @@ class RelationModel(object):
             max_len = rules.size(1)
             rules = rules.transpose(1,0)
             output = Variable(torch.LongTensor([constant.SOS_ID] * batch_size)) # sos
+            output = output.cuda() if self.opt['cuda'] else output
             # outputs = torch.zeros(max_len, batch_size, self.opt['rule_size'])
             # if self.opt['cuda']:
             #         outputs = outputs.cuda()
