@@ -51,11 +51,11 @@ class RelationModel(object):
         self.decoder.train()
         self.optimizer.zero_grad()
         logits, hidden, pooling_output = self.model(inputs, batch_size)
-        loss = self.criterion(logits, labels)
-        if self.opt.get('conv_l2', 0) > 0:
-            loss += self.model.conv_l2() * self.opt['conv_l2']
-        if self.opt.get('pooling_l2', 0) > 0:
-            loss += self.opt['pooling_l2'] * (pooling_output ** 2).sum(1).mean()
+        # loss = self.criterion(logits, labels)
+        # if self.opt.get('conv_l2', 0) > 0:
+        #     loss += self.model.conv_l2() * self.opt['conv_l2']
+        # if self.opt.get('pooling_l2', 0) > 0:
+        #     loss += self.opt['pooling_l2'] * (pooling_output ** 2).sum(1).mean()
         if rule:
             #DECODER PART
             rules = rules.view(batch_size, -1)
