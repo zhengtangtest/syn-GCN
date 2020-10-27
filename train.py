@@ -14,7 +14,7 @@ from model import RelationModel
 from utils import scorer, constant, helper
 from utils.vocab import Vocab
 
-from nltk.translate.bleu_score import corpus_bleu
+from nltk.translate.bleu_score import corpus_bleu, sentence_bleu
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir', type=str, default='dataset/tacred')
@@ -175,10 +175,11 @@ for epoch in range(1, opt['num_epoch']+1):
         rules = batch.rule.view(batch_size, -1)
         for i in range(batch_size):
             output = outputs.transpose(0, 1)[i]
-            references += [[[vocab.id2rule[int(r)] for r in rules[i].tolist()]]]
-            candidates += [[vocab.id2rule[int(r)] for r in output.tolist()]]
-            print ([[[vocab.id2rule[int(r)] for r in rules[i].tolist()]]])
-            print ([[vocab.id2rule[int(r)] for r in output.tolist()]])
+            r = [[vocab.id2rule[int(r)] for r in rules[i].tolist()]]
+            c = [vocab.id2rule[int(r)] for r in output.tolist()]
+            print (sentence_bleu(reference, candidate))
+            references.append(r)
+            candidates.append(c)
     predictions = [id2label[p] for p in predictions]
     dev_p, dev_r, dev_f1 = scorer.score(dev_batch.gold(), predictions)
     bleu = corpus_bleu(references, candidates)
