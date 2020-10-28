@@ -129,7 +129,7 @@ class BatchLoader(object):
                 if 't_' in mappings[c] or 's_' in mappings[c]:
                     rule = helper.word_tokenize(rules[eval(mappings[c])[0][1]])
                     rule = map_to_ids(rule, vocab.rule2id) 
-                    rule = [constant.SOS_ID] + rule
+                    rule = [constant.SOS_ID] + rule + [constant.EOS_ID]
                     processed_rule += [(tokens, pos, ner, deprel, subj_positions, obj_positions, relation, edge_index, rule)]
                 else:
                     processed += [(tokens, pos, ner, deprel, subj_positions, obj_positions, relation, edge_index)]
@@ -140,7 +140,7 @@ class BatchLoader(object):
                 if 't_' in mappings[c] or 's_' in mappings[c]:
                     rule = helper.word_tokenize(rules[eval(mappings[c])[0][1]])
                     rule = map_to_ids(rule, vocab.rule2id) 
-                    rule = [constant.SOS_ID] + rule
+                    rule = [constant.SOS_ID] + rule + [constant.EOS_ID]
                     processed_rule += [(tokens, pos, ner, deprel, subj_mask, obj_mask, relation, edge_index, edge_mask, rule)]
                 else:
                     processed += [(tokens, pos, ner, deprel, subj_mask, obj_mask, relation, edge_index, edge_mask)]
