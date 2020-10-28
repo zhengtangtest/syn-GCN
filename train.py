@@ -177,8 +177,6 @@ for epoch in range(1, opt['num_epoch']+1):
             output = outputs.transpose(0, 1)[i]
             reference = [[vocab.id2rule[int(r)] for r in rules[i].tolist()]]
             candidate = [vocab.id2rule[int(r)] for r in output.tolist()]
-            print (reference)
-            print (candidate)
             references.append(reference)
             candidates.append(candidate)
     predictions = [id2label[p] for p in predictions]

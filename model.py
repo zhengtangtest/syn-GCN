@@ -266,9 +266,9 @@ class SynGCN(nn.Module):
         h0, c0 = self.zero_state(batch_size)
         inputs = nn.utils.rnn.pack_padded_sequence(inputs, seq_lens, batch_first=True)
         outputs, (ht, ct) = self.rnn(inputs, (h0, c0))
-        outputs_e, output_lens = nn.utils.rnn.pad_packed_sequence(outputs, batch_first=True)
+        outputs, output_lens = nn.utils.rnn.pad_packed_sequence(outputs, batch_first=True)
         # hidden = self.drop(ht[-1,:,:]) # get the outmost layer h_n
-        outputs = self.drop(outputs_e)
+        outputs = self.drop(outputs)
 
         if self.opt['sgcn']:
             deprel = self.deprel_emb(deprel)
@@ -341,7 +341,7 @@ class SynGCN(nn.Module):
 
         final_hidden = self.out_mlp(final_hidden)
         logits = self.linear(final_hidden)
-        return logits, (ht, ct), h_out, outputs_e
+        return logits, (ht, ct), h_out, outputs
 
 class Attention(nn.Module):
     """
@@ -368,7 +368,6 @@ class Attention(nn.Module):
         """
         x : batch_size * seq_len * input_size
         q : batch_size * query_size
-        f : batch_size * seq_len * feature_size
         """
         batch_size, seq_len, _ = x.size()
 
@@ -469,7 +468,7 @@ class Decoder(nn.Module):
 
         self.embed = nn.Embedding(self.output_size, self.embed_size, padding_idx=constant.PAD_ID)
         self.dropout = nn.Dropout(opt['dropout'], inplace=True)
-        self.attention = Attention(self.hidden_size, opt['hidden_dim'])
+        self.attention = Attention(self.hidden_size, opt['emb_dim'] + opt['hidden_dim'])
         self.rnn = nn.LSTM(self.embed_size, self.hidden_size,
                           self.n_layers, dropout=opt['dropout'])
         self.out = nn.Linear(self.hidden_size, self.output_size)
@@ -480,13 +479,19 @@ class Decoder(nn.Module):
         embedded = self.embed(input).unsqueeze(0)  # (1,B,N)
         embedded = self.dropout(embedded)
 
-        # batch_size = encoder_outputs.size(0)
-        # # Calculate attention weights and apply to encoder outputs
-        # attn_weights = self.attention(encoder_outputs, masks, last_hidden[0].view(2, batch_size,-1)[-1])
-        # context = attn_weights.bmm(encoder_outputs.transpose(0, 1))  # (B,1,N)
-        # context = context.transpose(0, 1)  # (1,B,N)
-        # # Combine embedded input word and attended context, run through RNN
-        rnn_input = embedded #torch.cat([embedded, context], 2)
+        batch_size = encoder_outputs.size(0)
+        # Calculate attention weights and apply to encoder outputs
+        print (hidden[0].size())
+        print (embedded.size())
+        query = torch.cat((hidden[0], embedded), 1)
+        print (encoder_outputs.size())
+        print (masks.size())
+        print (query.size())
+        attn_weights = self.attention(encoder_outputs, masks, query)
+        context = attn_weights.bmm(encoder_outputs.transpose(0, 1))  # (B,1,N)
+        context = context.transpose(0, 1)  # (1,B,N)
+        # Combine embedded input word and attended context, run through RNN
+        rnn_input = torch.cat([embedded, context], 2)
         output, hidden = self.rnn(rnn_input, last_hidden)
         output = output.squeeze(0)  # (1,B,N) -> (B,N)
         # context = context.squeeze(0)
