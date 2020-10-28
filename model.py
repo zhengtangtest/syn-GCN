@@ -461,14 +461,14 @@ def pool(h, mask, type='max'):
 class Decoder(nn.Module):
     def __init__(self, opt):
         super(Decoder, self).__init__()
-        self.embed_size = opt['emb_dim']
+        self.embed_size = 100
         self.hidden_size = opt['hidden_dim']
         self.output_size = opt['rule_size']
         self.n_layers = opt['num_layers']
 
         self.embed = nn.Embedding(self.output_size, self.embed_size, padding_idx=constant.PAD_ID)
         self.dropout = nn.Dropout(opt['dropout'], inplace=True)
-        self.attention = Attention(self.hidden_size, opt['emb_dim'] + opt['hidden_dim'])
+        self.attention = Attention(self.hidden_size, self.embed_size + 2 * opt['hidden_dim'])
         self.rnn = nn.LSTM(self.embed_size, self.hidden_size,
                           self.n_layers, dropout=opt['dropout'])
         self.out = nn.Linear(self.hidden_size, self.output_size)
