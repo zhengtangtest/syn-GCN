@@ -22,13 +22,15 @@ class RelationModel(object):
         self.decoder = Decoder(opt)
         self.criterion = nn.CrossEntropyLoss()
         self.criterion_d = nn.NLLLoss(ignore_index=constant.PAD_ID)
-        self.parameters = [p for p in self.model.parameters()+self.decoder.parameters() if p.requires_grad]
+        self.parameters = [p for p in self.model.parameters() if p.requires_grad]
+        self.parameters_d = [p for p in self.decoder.parameters() if p.requires_grad]
         if opt['cuda']:
             self.model.cuda()
             self.decoder.cuda()
             self.criterion.cuda()
             self.criterion_d.cuda()
         self.optimizer = torch_utils.get_optimizer(opt['optim'], self.parameters, opt['lr'])
+        self.optimizer_d = torch_utils.get_optimizer(opt['optim'], self.parameters_d, opt['lr'])
     
     def update(self, batch, rule):
         """ Run a step of forward and backward model update. """
@@ -88,6 +90,7 @@ class RelationModel(object):
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt['max_grad_norm'])
         torch.nn.utils.clip_grad_norm_(self.decoder.parameters(), self.opt['max_grad_norm'])
         self.optimizer.step()
+        self.optimizer_d.step()
         loss_val = loss.data.item()
         return loss_val
 
