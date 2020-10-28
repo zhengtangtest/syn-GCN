@@ -175,8 +175,13 @@ for epoch in range(1, opt['num_epoch']+1):
         rules = batch.rule.view(batch_size, -1)
         for i in range(batch_size):
             output = outputs.transpose(0, 1)[i]
-            reference = [[vocab.id2rule[int(r)] for r in rules[i].tolist()]]
-            candidate = [vocab.id2rule[int(r)] for r in output.tolist()]
+            reference = [[vocab.id2rule[int(r)] for r in rules[i].tolist()[1:] if r not in [0,3]]]
+            candidate = []
+            for r in output.tolist()[1:]:
+                if int(r) == 3:
+                    break
+                else:
+                    candidate.append(vocab.id2rule[int(r)])
             print (reference)
             print (candidate)
             references.append(reference)
