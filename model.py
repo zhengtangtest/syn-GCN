@@ -73,6 +73,7 @@ class RelationModel(object):
             c0 = hidden[1].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
             decoder_hidden = (h0, c0)
             for t in range(1, max_len):
+                print (output)
                 output, decoder_hidden, attn_weights = self.decoder(
                         output, masks, decoder_hidden, encoder_outputs)
                 loss_d += self.criterion_d(output, rules[t])
