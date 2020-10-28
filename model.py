@@ -30,7 +30,7 @@ class RelationModel(object):
             self.criterion.cuda()
             self.criterion_d.cuda()
         self.optimizer = torch_utils.get_optimizer(opt['optim'], self.parameters, opt['lr'])
-        self.optimizer_d = torch_utils.get_optimizer(opt['optim'], self.parameters_d, opt['lr'])
+        self.optimizer_d = torch_utils.get_optimizer(opt['optim'], self.parameters_d, opt['lr']*0.1)
     
     def update(self, batch, rule):
         """ Run a step of forward and backward model update. """
@@ -54,11 +54,11 @@ class RelationModel(object):
         self.optimizer.zero_grad()
         loss = 0
         logits, hidden, pooling_output, encoder_outputs = self.model(inputs, batch_size)
-        # loss = self.criterion(logits, labels)
-        # if self.opt.get('conv_l2', 0) > 0:
-        #     loss += self.model.conv_l2() * self.opt['conv_l2']
-        # if self.opt.get('pooling_l2', 0) > 0:
-        #     loss += self.opt['pooling_l2'] * (pooling_output ** 2).sum(1).mean()
+        loss = self.criterion(logits, labels)
+        if self.opt.get('conv_l2', 0) > 0:
+            loss += self.model.conv_l2() * self.opt['conv_l2']
+        if self.opt.get('pooling_l2', 0) > 0:
+            loss += self.opt['pooling_l2'] * (pooling_output ** 2).sum(1).mean()
         if rule:
             #DECODER PART
             rules = rules.view(batch_size, -1)
