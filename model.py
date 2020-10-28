@@ -83,14 +83,15 @@ class RelationModel(object):
                 output = rules.data[t]
                 if self.opt['cuda']:
                     output = output.cuda()
-            loss += loss_d
+            loss += loss_d/max_len
 
         # backward
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt['max_grad_norm'])
-        torch.nn.utils.clip_grad_norm_(self.decoder.parameters(), self.opt['max_grad_norm'])
         self.optimizer.step()
-        self.optimizer_d.step()
+        if rule:
+            torch.nn.utils.clip_grad_norm_(self.decoder.parameters(), self.opt['max_grad_norm'])
+            self.optimizer_d.step()
         loss_val = loss.data.item()
         return loss_val
 
