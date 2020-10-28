@@ -482,10 +482,8 @@ class Decoder(nn.Module):
         batch_size = encoder_outputs.size(0)
         # Calculate attention weights and apply to encoder outputs
         query = torch.cat((last_hidden[0].view(batch_size, -1), embedded.squeeze(0)), 1)
-        print (encoder_outputs.size())
-        print (masks.size())
-        print (query.size())
         attn_weights = self.attention(encoder_outputs, masks, query)
+        print (attn_weights.size(), encoder_outputs.size())
         context = attn_weights.bmm(encoder_outputs.transpose(0, 1))  # (B,1,N)
         context = context.transpose(0, 1)  # (1,B,N)
         # Combine embedded input word and attended context, run through RNN
