@@ -481,9 +481,9 @@ class Decoder(nn.Module):
 
         batch_size = encoder_outputs.size(0)
         # Calculate attention weights and apply to encoder outputs
-        print (hidden[0].size())
+        print (last_hidden[0].size())
         print (embedded.size())
-        query = torch.cat((hidden[0], embedded), 1)
+        query = torch.cat((last_hidden[0], embedded), 1)
         print (encoder_outputs.size())
         print (masks.size())
         print (query.size())
