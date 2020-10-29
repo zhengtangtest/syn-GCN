@@ -150,7 +150,7 @@ for epoch in range(1, opt['num_epoch']+1):
     for batch in train_batch.data_r:
         start_time = time.time()
         global_step += 1
-        loss = model.update(batch, True)
+        loss = model.update(batch, False)
         train_loss += loss
         if global_step % opt['log_step'] == 0:
             duration = time.time() - start_time
@@ -168,7 +168,7 @@ for epoch in range(1, opt['num_epoch']+1):
         predictions += preds
         dev_loss += loss
     for batch in dev_batch.data_r:
-        preds, _, outputs, loss = model.predict(batch, True)
+        preds, _, outputs, loss = model.predict(batch, False)
         predictions += preds
         dev_loss += loss
         batch_size = len(preds)
