@@ -281,7 +281,7 @@ class SynGCN(nn.Module):
             
             h_out   = pool(outputs, e_masks.unsqueeze(2), type=pool_type)
             weights = self.attn(deprel, d_masks, h_out)
-            weights = torch.cat([weights, weights], dim=1)
+            # weights = torch.cat([weights, weights], dim=1)
             weights = weights.view(-1)
             weights = weights[weights.nonzero()].squeeze(1)
             outputs = outputs.reshape(s_len*batch_size, -1)
