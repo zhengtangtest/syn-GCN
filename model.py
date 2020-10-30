@@ -23,14 +23,12 @@ class RelationModel(object):
         self.criterion = nn.CrossEntropyLoss()
         self.criterion_d = nn.NLLLoss(ignore_index=constant.PAD_ID)
         self.parameters = [p for p in self.model.parameters() if p.requires_grad] + [p for p in self.decoder.parameters() if p.requires_grad]
-        # self.parameters_d = [p for p in self.decoder.parameters() if p.requires_grad]
         if opt['cuda']:
             self.model.cuda()
             self.decoder.cuda()
             self.criterion.cuda()
             self.criterion_d.cuda()
         self.optimizer = torch_utils.get_optimizer(opt['optim'], self.parameters, opt['lr'])
-        # self.optimizer_d = torch_utils.get_optimizer(opt['optim'], self.parameters_d, opt['lr']/100)
     
     def update(self, batch, rule):
         """ Run a step of forward and backward model update. """
@@ -67,9 +65,6 @@ class RelationModel(object):
             rules = rules.transpose(1,0)
             output = Variable(torch.LongTensor([constant.SOS_ID] * batch_size)) # sos
             output = output.cuda() if self.opt['cuda'] else output
-            # outputs = torch.zeros(max_len, batch_size, self.opt['rule_size'])
-            # if self.opt['cuda']:
-            #         outputs = outputs.cuda()
             loss_d = 0
             h0 = hidden[0].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
             c0 = hidden[1].view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
@@ -78,21 +73,16 @@ class RelationModel(object):
                 output, decoder_hidden, attn_weights = self.decoder(
                         output, masks, decoder_hidden, encoder_outputs)
                 loss_d += self.criterion_d(output, rules[t])
-                # outputs[t] = output
-                # top1 = output.data.max(1)[1]
                 output = rules.data[t]
                 if self.opt['cuda']:
                     output = output.cuda()
-            loss += loss_d/max_len
+            loss += loss_d
 
         # backward
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.decoder.parameters(), self.opt['max_grad_norm'])
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt['max_grad_norm'])
         self.optimizer.step()
-        # if rule:
-        #     torch.nn.utils.clip_grad_norm_(self.decoder.parameters(), self.opt['max_grad_norm'])
-        #     self.optimizer_d.step()
         loss_val = loss.data.item()
         return loss_val
 
