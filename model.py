@@ -14,8 +14,6 @@ from torch_geometric.nn import GCNConv, RGCNConv, GATConv
 
 from torch.autograd import Variable
 
-from gcn import GCNClassifier
-
 class RelationModel(object):
     """ A wrapper class for the training and evaluation of models. """
     def __init__(self, opt, emb_matrix=None):
