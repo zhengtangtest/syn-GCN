@@ -52,9 +52,6 @@ class RelationModel(object):
         self.optimizer.zero_grad()
         loss = 0
         logits, hidden, pooling_output, encoder_outputs = self.classifier(inputs, batch_size)
-        print (hidden.size())
-        h0 = hidden.view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2)
-        print (h0.size())
         loss = self.criterion(logits, labels)
         if self.opt.get('conv_l2', 0) > 0:
             loss += self.classifier.conv_l2() * self.opt['conv_l2']
@@ -69,8 +66,8 @@ class RelationModel(object):
             output = Variable(torch.LongTensor([constant.SOS_ID] * batch_size)) # sos
             output = output.cuda() if self.opt['cuda'] else output
             loss_d = 0
-            h0 = hidden.view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2)
-            c0 = hidden.view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2)
+            h0 = hidden.view(self.opt['num_layers'], batch_size, -1)
+            c0 = hidden.view(self.opt['num_layers'], batch_size, -1)
             decoder_hidden = (h0, c0)
             for t in range(1, max_len):
                 output, decoder_hidden, attn_weights = self.decoder(
@@ -120,8 +117,8 @@ class RelationModel(object):
             outputs[0] = output
             if self.opt['cuda']:
                     outputs = outputs.cuda()
-            h0 = hidden.view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
-            c0 = hidden.view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
+            h0 = hidden.view(self.opt['num_layers'], batch_size, -1)
+            c0 = hidden.view(self.opt['num_layers'], batch_size, -1)
             decoder_hidden = (h0, c0)
             for t in range(1, 80):
                 output, decoder_hidden, attn_weights = self.decoder(
