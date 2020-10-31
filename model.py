@@ -70,6 +70,7 @@ class RelationModel(object):
             loss_d = 0
             h0 = pooling_output.view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
             c0 = pooling_output.view(self.opt['num_layers'], 2, batch_size, -1).transpose(1, 2).sum(2)
+            print (h0.size())
             decoder_hidden = (h0, c0)
             for t in range(1, max_len):
                 output, decoder_hidden, attn_weights = self.decoder(
