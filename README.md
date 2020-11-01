@@ -1,3 +1,3 @@
 # syn-GCN
 
-test
+test!
